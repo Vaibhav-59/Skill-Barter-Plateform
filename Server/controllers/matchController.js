@@ -1,0 +1,947 @@
+// /server/controllers/matchController.js - Enhanced with Smart Matching
+
+const Match = require("../models/Match");
+const User = require("../models/User");
+const Review = require("../models/Review");
+const MatchHistory = require("../models/MatchHistory");
+const MatchPreference = require("../models/MatchPreference");
+const Notification = require("../models/Notification");
+const ErrorResponse = require("../utils/errorResponse");
+const SmartMatchingAlgorithm = require("../utils/smartMatching");
+const { aiCache } = require("../middleware/aiCache");
+const {
+  getConfig,
+  isFeatureEnabled,
+  getAlgorithmWeights,
+} = require("../config/aiConfig");
+
+// @desc    Get smart matches for current user
+// @route   GET /api/matches/smart
+// @access  Private
+exports.getSmartMatches = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const {
+      page = 1,
+      limit = 10,
+      minCompatibility = 30,
+      maxResults = 50,
+      includeInsights = false,
+      refresh = false,
+    } = req.query;
+
+    // Check if smart matching is enabled for this user
+    if (!isFeatureEnabled("smartMatching", userId)) {
+      return next(new ErrorResponse("Smart matching not available", 403));
+    }
+
+    // Get user preferences - handle case where model might not exist
+    let userPreferences = null;
+    try {
+      userPreferences = await MatchPreference.getOrCreateForUser(userId);
+    } catch (error) {
+      console.warn("MatchPreference model not available, using defaults");
+      userPreferences = null;
+    }
+
+    // Check cache first - include all relevant params in cache key
+    // Skip cache if bypass is requested or refresh=true
+    const cacheKey = `smart_matches:${userId}:${page}:${limit}:${minCompatibility}:${maxResults}:${includeInsights}`;
+    const shouldBypassCache = req.bypassCache || refresh === "true";
+    
+    // If refresh=true, invalidate old cache first
+    if (refresh === "true") {
+      await aiCache.invalidateUserCaches(userId);
+    }
+    
+    const cachedResults = shouldBypassCache ? null : await aiCache.get(cacheKey);
+
+    if (cachedResults) {
+      console.log(`🚀 Smart match cache hit for user ${userId}`);
+      console.log(`🔍 Debug: Cache contains ${cachedResults.matches?.length || 0} matches`);
+      return res.status(200).json({
+        success: true,
+        data: cachedResults,
+        cached: true,
+      });
+    }
+
+    // Get current user with correct field names
+    const currentUser = await User.findById(userId).lean();
+
+    if (!currentUser) {
+      return next(new ErrorResponse("User not found", 404));
+    }
+
+    // Map the fields to what the algorithm expects
+    currentUser.skillsOffered = currentUser.teachSkills || [];
+    currentUser.skillsWanted = currentUser.learnSkills || [];
+    currentUser.experienceLevel = currentUser.experienceLevel || "intermediate";
+    currentUser.availability = currentUser.availability || "";
+    currentUser.lastActive = currentUser.lastActive || new Date();
+
+    // Get current user's review stats
+    const currentUserReviewStats = await Review.getAverageRating(userId);
+    currentUser.averageRating = currentUserReviewStats.averageRating || 0;
+    currentUser.totalReviews = currentUserReviewStats.totalReviews || 0;
+
+    console.log(`🔍 Debug: Current user skillsOffered:`, currentUser.skillsOffered);
+    console.log(`🔍 Debug: Current user skillsWanted:`, currentUser.skillsWanted);
+    console.log(`🔍 Debug: Current user reviews:`, currentUserReviewStats);
+
+    // Get potential matches (exclude current user, blocked users, existing matches)
+    const existingMatches = await Match.find({
+      $or: [{ requester: userId }, { receiver: userId }],
+    })
+      .select("requester receiver")
+      .lean();
+
+    const excludedUserIds = [
+      userId,
+      ...existingMatches.map((match) =>
+        match.requester.toString() === userId.toString()
+          ? match.receiver.toString()
+          : match.requester.toString()
+      ),
+    ];
+
+    // Build query for potential matches - using correct field names
+    // Include users who have at least one skill type defined
+    const matchQuery = {
+      _id: { $nin: excludedUserIds },
+      $or: [
+        { teachSkills: { $exists: true, $ne: [] } },
+        { learnSkills: { $exists: true, $ne: [] } },
+      ],
+    };
+
+    // Debug: Log total users in database
+    const totalUsers = await User.countDocuments({ _id: { $ne: userId } });
+    console.log(`🔍 Debug: Total users in DB (excluding self): ${totalUsers}`);
+
+    // Get potential matches
+    const potentialMatches = await User.find(matchQuery)
+      .limit(maxResults)
+      .lean();
+
+    console.log(`🔍 Debug: Found ${potentialMatches.length} potential matches for user ${userId}`);
+    console.log(`🔍 Debug: Excluded user IDs:`, excludedUserIds.length);
+
+    // Fetch review stats for all potential matches
+    const matchUserIds = potentialMatches.map(u => u._id);
+    const mongoose = require('mongoose');
+    const objectIdArray = matchUserIds.map(id => id instanceof mongoose.Types.ObjectId ? id : new mongoose.Types.ObjectId(id));
+    
+    const reviewStats = await Review.aggregate([
+      { $match: { reviewee: { $in: objectIdArray } } },
+      {
+        $group: {
+          _id: "$reviewee",
+          averageRating: { $avg: "$rating" },
+          totalReviews: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const reviewStatsMap = {};
+    reviewStats.forEach(stat => {
+      reviewStatsMap[stat._id.toString()] = {
+        averageRating: Math.round(stat.averageRating * 10) / 10,
+        totalReviews: stat.totalReviews
+      };
+    });
+
+    console.log(`🔍 Debug: Review stats for matches:`, reviewStatsMap);
+
+    // Map fields for each potential match
+    potentialMatches.forEach((user) => {
+      user.skillsOffered = user.teachSkills || [];
+      user.skillsWanted = user.learnSkills || [];
+      user.experienceLevel = user.experienceLevel || "intermediate";
+      user.availability = user.availability || "";
+      const stats = reviewStatsMap[user._id.toString()] || { averageRating: 0, totalReviews: 0 };
+      user.averageRating = stats.averageRating;
+      user.totalReviews = stats.totalReviews;
+      user.lastActive = user.lastActive || new Date();
+      user.isOnline = user.isOnline || false;
+    });
+
+    if (potentialMatches.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          matches: [],
+          pagination: { currentPage: page, totalPages: 0, totalMatches: 0 },
+          insights: {
+            message:
+              "No potential matches found. Try updating your skills or preferences.",
+          },
+        },
+      });
+    }
+
+    // Get user's match history for algorithm learning
+    let matchHistory = [];
+    try {
+      matchHistory = await MatchHistory.find({ user: userId })
+        .populate("matchedUser", "teachSkills learnSkills experienceLevel")
+        .limit(50)
+        .lean();
+
+      // Map skills for match history as well
+      if (matchHistory.length > 0) {
+        matchHistory.forEach((history) => {
+          if (history.matchedUser) {
+            history.matchedUser.skillsOffered =
+              history.matchedUser.teachSkills || [];
+            history.matchedUser.skillsWanted =
+              history.matchedUser.learnSkills || [];
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("MatchHistory model not available, using empty history");
+      matchHistory = [];
+    }
+
+    // Calculate smart matches using AI algorithm
+    console.log(
+      `🤖 Calculating smart matches for ${potentialMatches.length} potential users...`
+    );
+
+    const smartMatches = SmartMatchingAlgorithm.calculateMatchScores(
+      currentUser,
+      potentialMatches,
+      matchHistory || []
+    );
+
+    // Filter to only include users with at least one matching skill
+    const userTeachSkills = currentUser.skillsOffered || currentUser.teachSkills || [];
+    const userLearnSkills = currentUser.skillsWanted || currentUser.learnSkills || [];
+
+    const getSkillNames = (skills) => {
+      if (!Array.isArray(skills)) return [];
+      return skills.map(s => typeof s === 'string' ? s : (s.name || s.skillName || '')).filter(Boolean);
+    };
+
+    const filteredMatches = smartMatches.filter((match) => {
+      const matchTeachSkills = getSkillNames(match.user.skillsOffered || match.user.teachSkills || []);
+      const matchLearnSkills = getSkillNames(match.user.skillsWanted || match.user.learnSkills || []);
+      const teachSkills = getSkillNames(userTeachSkills);
+      const learnSkills = getSkillNames(userLearnSkills);
+
+      const userCanTeach = matchLearnSkills.some(skill => 
+        teachSkills.some(userSkill => 
+          userSkill.toLowerCase() === skill.toLowerCase()
+        )
+      );
+      const userCanLearn = matchTeachSkills.some(skill => 
+        learnSkills.some(userSkill => 
+          userSkill.toLowerCase() === skill.toLowerCase()
+        )
+      );
+
+      return userCanTeach || userCanLearn;
+    }).filter((match) => {
+      return match.compatibilityScore >= minCompatibility;
+    });
+
+    console.log(`🔍 Debug: Calculated ${smartMatches.length} smart matches`);
+    console.log(`🔍 Debug: Compatibility scores:`, smartMatches.slice(0, 5).map(m => ({ id: m.user._id, score: m.compatibilityScore, matchType: m.matchType })));
+    console.log(`🔍 Debug: Filtered to ${filteredMatches.length} matches with minCompatibility >= ${minCompatibility}`);
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedMatches = filteredMatches.slice(startIndex, endIndex);
+
+    // Prepare response data - map back to original field names for consistency
+    const responseData = {
+      matches: paginatedMatches.map((match) => ({
+        user: {
+          _id: match.user._id,
+          name: match.user.name,
+          email: match.user.email,
+          avatar: match.user.avatar,
+          bio: match.user.bio || "",
+          location: match.user.location,
+          teachSkills: match.user.skillsOffered || match.user.teachSkills || [],
+          learnSkills: match.user.skillsWanted || match.user.learnSkills || [],
+          skillsOffered: match.user.skillsOffered || [],
+          skillsWanted: match.user.skillsWanted || [],
+          experienceLevel: match.user.experienceLevel || "intermediate",
+          averageRating: match.user.averageRating || 0,
+          totalReviews: match.user.totalReviews || 0,
+          isOnline: match.user.isOnline || false,
+          lastActive: match.user.lastActive,
+          availability: match.user.availability,
+        },
+        compatibilityScore: match.compatibilityScore,
+        matchType: match.matchType,
+        reasons: match.reasons || [],
+        confidence: match.confidence || 0,
+        ...(includeInsights === "true" && { breakdown: match.breakdown }),
+      })),
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(filteredMatches.length / limit),
+        totalMatches: filteredMatches.length,
+        hasNextPage: endIndex < filteredMatches.length,
+        hasPrevPage: page > 1,
+      },
+    };
+
+    // Cache the results
+    await aiCache.set(cacheKey, responseData, 1800); // 30 minutes
+
+    res.status(200).json({
+      success: true,
+      data: responseData,
+      cached: false,
+    });
+  } catch (error) {
+    console.error("Smart matching error:", error);
+    next(new ErrorResponse("Error calculating smart matches", 500));
+  }
+};
+
+// @desc    Calculate compatibility between current user and target user
+// @route   GET /api/matches/compatibility/:targetUserId
+// @access  Private
+exports.calculateCompatibility = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { targetUserId } = req.params;
+
+    if (userId.toString() === targetUserId) {
+      return next(
+        new ErrorResponse("Cannot calculate compatibility with yourself", 400)
+      );
+    }
+
+    // Check cache first
+    const cacheKey = `compatibility:${userId}:${targetUserId}`;
+    const cachedResult = await aiCache.get(cacheKey);
+
+    if (cachedResult) {
+      return res.status(200).json({
+        success: true,
+        data: cachedResult,
+        cached: true,
+      });
+    }
+
+    // Get both users with correct field names
+    const [currentUser, targetUser] = await Promise.all([
+      User.findById(userId).lean(),
+      User.findById(targetUserId).lean(),
+    ]);
+
+    if (!targetUser) {
+      return next(new ErrorResponse("Target user not found", 404));
+    }
+
+    // Map fields for both users
+    currentUser.skillsOffered = currentUser.teachSkills || [];
+    currentUser.skillsWanted = currentUser.learnSkills || [];
+    targetUser.skillsOffered = targetUser.teachSkills || [];
+    targetUser.skillsWanted = targetUser.learnSkills || [];
+
+    // Get user's match history for algorithm learning
+    let matchHistory = [];
+    try {
+      matchHistory = await MatchHistory.find({ user: userId })
+        .populate("matchedUser", "teachSkills learnSkills experienceLevel")
+        .limit(20)
+        .lean();
+
+      // Map skills for match history
+      if (matchHistory.length > 0) {
+        matchHistory.forEach((history) => {
+          if (history.matchedUser) {
+            history.matchedUser.skillsOffered =
+              history.matchedUser.teachSkills || [];
+            history.matchedUser.skillsWanted =
+              history.matchedUser.learnSkills || [];
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("MatchHistory model not available, using empty history");
+      matchHistory = [];
+    }
+
+    // Calculate compatibility using smart matching algorithm
+    const compatibility = SmartMatchingAlgorithm.calculateMatchScores(
+      currentUser,
+      [targetUser],
+      matchHistory || []
+    )[0];
+
+    const result = {
+      targetUser: {
+        _id: targetUser._id,
+        name: targetUser.name,
+        avatar: targetUser.avatar,
+        bio: targetUser.bio,
+        teachSkills: targetUser.teachSkills,
+        learnSkills: targetUser.learnSkills,
+        skillsOffered: targetUser.skillsOffered, // For backward compatibility
+        skillsWanted: targetUser.skillsWanted, // For backward compatibility
+        experienceLevel: targetUser.experienceLevel,
+        averageRating: targetUser.averageRating,
+        totalReviews: targetUser.totalReviews,
+      },
+      compatibility: {
+        score: compatibility.compatibilityScore,
+        percentage: Math.round(compatibility.compatibilityScore),
+        matchType: compatibility.matchType,
+        reasons: compatibility.reasons,
+        breakdown: compatibility.breakdown,
+        confidence: compatibility.confidence,
+      },
+      recommendations: generateMatchRecommendations(compatibility),
+    };
+
+    // Cache the result
+    await aiCache.set(cacheKey, result, 3600); // 1 hour
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      cached: false,
+    });
+  } catch (error) {
+    console.error("Calculate compatibility error:", error);
+    next(new ErrorResponse("Error calculating compatibility", 500));
+  }
+};
+
+// @desc    Refresh smart matches for current user
+// @route   GET /api/matches/smart/refresh
+// @access  Private
+exports.refreshSmartMatches = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    // Clear user's smart match cache
+    await aiCache.invalidateUserCaches(userId);
+
+    // Force recalculation by calling getSmartMatches with cache bypass
+    req.bypassCache = true;
+
+    // Call the main smart matches function
+    await exports.getSmartMatches(req, res, next);
+  } catch (error) {
+    console.error("Refresh smart matches error:", error);
+    next(new ErrorResponse("Error refreshing smart matches", 500));
+  }
+};
+
+// @desc    Get match insights and analytics
+// @route   GET /api/matches/insights
+// @access  Private
+exports.getMatchInsights = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+
+    if (!isFeatureEnabled("matchInsights", userId)) {
+      return next(new ErrorResponse("Match insights not available", 403));
+    }
+
+    // Simple insights for now
+    const insights = {
+      overview: {
+        totalMatches: 0,
+        successfulMatches: 0,
+        successRate: 0,
+        averageCompatibility: 0,
+        averageRating: 0,
+        completedSessions: 0,
+      },
+      topSkills: [],
+      matchTypes: {},
+      recommendations: [
+        {
+          type: "profile_completion",
+          message:
+            "Complete your profile with more skills to get better matches",
+          priority: "high",
+        },
+      ],
+      trends: {
+        last30Days: 0,
+        averageResponseTime: 0,
+        improvementAreas: [],
+      },
+      preferences: {
+        customizationLevel: 0,
+        effectivenessScore: 50,
+      },
+    };
+
+    res.status(200).json({
+      success: true,
+      data: insights,
+      cached: false,
+    });
+  } catch (error) {
+    console.error("Match insights error:", error);
+    next(new ErrorResponse("Error fetching match insights", 500));
+  }
+};
+
+// @desc    Create a match request
+// @route   POST /api/matches/request
+// @access  Private
+exports.requestMatch = async (req, res, next) => {
+  try {
+    const requesterId = req.user._id;
+    const { receiverId, message, skillsInvolved } = req.body;
+
+    console.log("Creating match request:", {
+      requesterId: requesterId.toString(),
+      receiverId,
+      message,
+      skillsInvolved,
+    });
+
+    // Validate receiver exists
+    const receiver = await User.findById(receiverId);
+    if (!receiver) {
+      return next(new ErrorResponse("User not found", 404));
+    }
+
+    // Check if match already exists - FIXED: Use same logic as checkExistingMatch
+    const existingMatch = await Match.findOne({
+      $or: [
+        { requester: requesterId, receiver: receiverId },
+        { requester: receiverId, receiver: requesterId },
+      ],
+    });
+
+    console.log("Existing match found:", existingMatch);
+
+    if (existingMatch) {
+      // Check the status - only block if it's pending or accepted
+      if (existingMatch.status === "pending") {
+        return next(new ErrorResponse("Match request already pending", 400));
+      } else if (existingMatch.status === "accepted") {
+        return next(new ErrorResponse("Users are already matched", 400));
+      }
+      // If status is 'rejected', allow creating a new match request
+      // Delete the old rejected match first
+      if (existingMatch.status === "rejected") {
+        await Match.findByIdAndDelete(existingMatch._id);
+        console.log("Deleted old rejected match, allowing new request");
+      }
+    }
+
+    // Create match
+    const match = await Match.create({
+      requester: requesterId,
+      receiver: receiverId,
+      message: message || "Match request",
+      skillsInvolved: skillsInvolved || [],
+      status: "pending",
+    });
+
+    console.log("Match created successfully:", match._id);
+
+    // Populate the match for response
+    const populatedMatch = await Match.findById(match._id)
+      .populate("requester", "name email avatar")
+      .populate("receiver", "name email avatar");
+
+    // Tell the receiver they got a Match Request!
+    await Notification.create({
+      recipient: receiverId,
+      type: "match_request",
+      content: `${req.user.name} sent you a match request to teach ${skillsInvolved[1]} and learn ${skillsInvolved[0]}!`,
+      relatedId: match._id,
+      relatedModel: "Match"
+    });
+
+    res.status(201).json({
+      success: true,
+      data: populatedMatch,
+      message: "Match request sent successfully",
+    });
+  } catch (error) {
+    console.error("Create match request error:", error);
+    next(new ErrorResponse("Error creating match request", 500));
+  }
+};
+
+// @desc    Respond to match request
+// @route   PUT /api/matches/:id
+// @access  Private
+exports.respondToMatch = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user._id;
+
+    const match = await Match.findById(id);
+    if (!match) {
+      return next(new ErrorResponse("Match not found", 404));
+    }
+
+    // Verify user is the receiver
+    if (!match.receiver.equals(userId)) {
+      return next(
+        new ErrorResponse("Not authorized to respond to this match", 403)
+      );
+    }
+
+    match.status = status;
+    if (status === "accepted") {
+      match.acceptedAt = new Date();
+    } else if (status === "rejected") {
+      match.rejectedAt = new Date();
+    }
+
+    await match.save();
+
+    const populatedMatch = await Match.findById(match._id)
+      .populate("requester", "name email avatar")
+      .populate("receiver", "name email avatar");
+
+    // Tell the requester that their match was accepted!
+    if (status === "accepted") {
+      await Notification.create({
+        recipient: match.requester._id,
+        type: "system",
+        content: `${req.user.name} accepted your match request! You can now send them a message.`,
+        relatedId: match._id,
+        relatedModel: "Match"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: populatedMatch,
+      message: `Match request ${status}`,
+    });
+  } catch (error) {
+    console.error("Respond to match error:", error);
+    next(new ErrorResponse("Error responding to match request", 500));
+  }
+};
+
+// @desc    Get user's matches
+// @route   GET /api/matches
+// @access  Private
+exports.getMyMatches = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { status, page = 1, limit = 10 } = req.query;
+
+    console.log("Getting matches for user:", userId.toString());
+
+    let query = {
+      $or: [{ requester: userId }, { receiver: userId }],
+    };
+
+    if (status) {
+      query.status = status;
+    }
+
+    console.log("Match query:", query);
+
+    // Use correct field names for population
+    const matches = await Match.find(query)
+      .populate(
+        "requester",
+        "name email avatar teachSkills learnSkills bio location"
+      )
+      .populate(
+        "receiver",
+        "name email avatar teachSkills learnSkills bio location"
+      )
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    console.log("Found matches:", matches.length);
+
+    const total = await Match.countDocuments(query);
+
+    // FIXED: Return matches array directly as 'data' to match frontend expectation
+    res.status(200).json({
+      success: true,
+      data: matches, // Frontend expects this to be the matches array directly
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalMatches: total,
+      },
+    });
+  } catch (error) {
+    console.error("Get matches error:", error);
+    next(new ErrorResponse("Error fetching matches", 500));
+  }
+};
+
+// @desc    Get match by ID
+// @route   GET /api/matches/:id
+// @access  Private
+exports.getMatchById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Use correct field names for population
+    const match = await Match.findById(id)
+      .populate(
+        "requester",
+        "name email avatar teachSkills learnSkills bio location"
+      )
+      .populate(
+        "receiver",
+        "name email avatar teachSkills learnSkills bio location"
+      );
+
+    if (!match) {
+      return next(new ErrorResponse("Match not found", 404));
+    }
+
+    // Verify user is part of this match
+    if (
+      !match.requester._id.equals(userId) &&
+      !match.receiver._id.equals(userId)
+    ) {
+      return next(new ErrorResponse("Not authorized to view this match", 403));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: match,
+    });
+  } catch (error) {
+    console.error("Get match by ID error:", error);
+    next(new ErrorResponse("Error fetching match", 500));
+  }
+};
+
+// @desc    Find compatible users (simplified)
+// @route   GET /api/matches/suggestions
+// @access  Private
+exports.findCompatibleUsers = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { limit = 10 } = req.query;
+
+    // Get current user with correct field names
+    const currentUser = await User.findById(userId);
+
+    // Get potential matches (exclude current user and existing matches)
+    const existingMatches = await Match.find({
+      $or: [{ requester: userId }, { receiver: userId }],
+    }).select("requester receiver");
+
+    const excludedUserIds = [
+      userId,
+      ...existingMatches.map((match) =>
+        match.requester.toString() === userId.toString()
+          ? match.receiver.toString()
+          : match.requester.toString()
+      ),
+    ];
+
+    // Use correct field names in query
+    const compatibleUsers = await User.find({
+      _id: { $nin: excludedUserIds },
+      $or: [
+        { teachSkills: { $exists: true, $not: { $size: 0 } } },
+        { learnSkills: { $exists: true, $not: { $size: 0 } } },
+      ],
+    }).limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: compatibleUsers,
+    });
+  } catch (error) {
+    console.error("Find compatible users error:", error);
+    next(new ErrorResponse("Error finding compatible users", 500));
+  }
+};
+
+// @desc    Check if match exists
+// @route   POST /api/matches/check
+// @access  Private
+exports.checkMatch = async (req, res, next) => {
+  try {
+    const { userId1, userId2 } = req.body;
+
+    const match = await Match.findOne({
+      $or: [
+        { requester: userId1, receiver: userId2 },
+        { requester: userId2, receiver: userId1 },
+      ],
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        exists: !!match,
+        match: match || null,
+      },
+    });
+  } catch (error) {
+    console.error("Check match error:", error);
+    next(new ErrorResponse("Error checking match", 500));
+  }
+};
+
+// @desc    Check existing match with user
+// @route   GET /api/matches/check/:userId
+// @access  Private
+exports.checkExistingMatch = async (req, res, next) => {
+  try {
+    const currentUserId = req.user._id;
+    const { userId } = req.params;
+
+    const match = await Match.findOne({
+      $or: [
+        { requester: currentUserId, receiver: userId },
+        { requester: userId, receiver: currentUserId },
+      ],
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        exists: !!match,
+        status: match ? match.status : null,
+        match: match || null,
+      },
+    });
+  } catch (error) {
+    console.error("Check existing match error:", error);
+    next(new ErrorResponse("Error checking existing match", 500));
+  }
+};
+
+// @desc    Request match completion
+// @route   POST /api/matches/:id/complete
+// @access  Private
+exports.requestCompletion = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const match = await Match.findById(id);
+    if (!match) {
+      return next(new ErrorResponse("Match not found", 404));
+    }
+
+    // Verify user is part of this match
+    if (!match.requester.equals(userId) && !match.receiver.equals(userId)) {
+      return next(new ErrorResponse("Not authorized", 403));
+    }
+
+    // Only accepted matches can be completed
+    if (match.status !== "accepted") {
+      return next(
+        new ErrorResponse("Match must be accepted to request completion", 400)
+      );
+    }
+
+    // Check if user already requested completion
+    const userAlreadyRequested = match.completionRequests.some(
+      (req) => req.user.toString() === userId.toString()
+    );
+
+    if (userAlreadyRequested) {
+      return next(
+        new ErrorResponse("You have already requested completion", 400)
+      );
+    }
+
+    // Add user to completion requests
+    match.completionRequests.push({
+      user: userId,
+      requestedAt: new Date(),
+    });
+
+    // Check if both users have now requested completion
+    const otherUserId = match.requester.equals(userId)
+      ? match.receiver
+      : match.requester;
+    const otherUserRequested = match.completionRequests.some(
+      (req) => req.user.toString() === otherUserId.toString()
+    );
+
+    let message = "";
+
+    if (otherUserRequested) {
+      // Both users have requested completion - mark as completed
+      match.status = "completed";
+      match.completedAt = new Date();
+      message = "Match marked as completed! Both users confirmed completion.";
+      console.log(`Match ${id} completed - both users confirmed`);
+    } else {
+      // Only current user has requested - wait for other user
+      message =
+        "Completion request sent. Waiting for the other user to confirm.";
+      console.log(`User ${userId} requested completion for match ${id}`);
+    }
+
+    await match.save();
+
+    // Populate the match for response
+    const populatedMatch = await Match.findById(match._id)
+      .populate("requester", "name email avatar")
+      .populate("receiver", "name email avatar");
+
+    res.status(200).json({
+      success: true,
+      data: populatedMatch,
+      message: message,
+    });
+  } catch (error) {
+    console.error("Request completion error:", error);
+    next(new ErrorResponse("Error requesting match completion", 500));
+  }
+};
+
+// Helper function to generate match recommendations
+function generateMatchRecommendations(compatibility) {
+  const recommendations = [];
+  const score = compatibility.compatibilityScore;
+
+  if (score >= 80) {
+    recommendations.push({
+      type: "high_compatibility",
+      message:
+        "Excellent match! Strong skill alignment and mutual learning opportunities.",
+      action: "Send a match request soon",
+      priority: "high",
+    });
+  } else if (score >= 60) {
+    recommendations.push({
+      type: "good_compatibility",
+      message: "Good compatibility with several matching interests.",
+      action: "Consider reaching out with a personalized message",
+      priority: "medium",
+    });
+  } else if (score >= 40) {
+    recommendations.push({
+      type: "potential_match",
+      message: "Some compatibility areas found.",
+      action: "Review their profile for common interests",
+      priority: "low",
+    });
+  } else {
+    recommendations.push({
+      type: "low_compatibility",
+      message: "Limited compatibility detected.",
+      action: "Look for other potential matches",
+      priority: "low",
+    });
+  }
+
+  return recommendations;
+}

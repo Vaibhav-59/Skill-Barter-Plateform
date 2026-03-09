@@ -1,0 +1,87 @@
+const express = require("express");
+const { protect } = require("../middleware/auth");
+const { body } = require("express-validator");
+const { runValidation } = require("../middleware/validator");
+const { upload } = require("../middleware/upload");
+const User = require("../models/User");
+const { cloudinaryDelete, extractPublicId } = require("../middleware/upload");
+const {
+  getProfile,
+  updateProfile,
+  searchUsers,
+  getAllUsers,
+  getDashboardStats,
+  getUserById,
+} = require("../controllers/userController");
+
+const router = express.Router();
+
+// Get current logged-in user
+router.get("/me", protect, async (req, res, next) => {
+  try {
+    res.json(req.user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Get Profile
+router.get("/profile", protect, getProfile);
+
+// Update Profile
+router.put(
+  "/profile",
+  [
+    protect,
+    upload.array("skillCertificates", 10),
+    body("name").optional().isString(),
+    body("bio").optional().isString(),
+    body("location").optional().isString(),
+    body("role").optional().isString(),
+    body("experienceLevel").optional().isString(),
+    runValidation,
+  ],
+  updateProfile
+);
+
+// Get all users for discovery
+router.get("/discover", protect, getAllUsers);
+
+// Get dashboard stats
+router.get("/dashboard-stats", protect, getDashboardStats);
+
+// Delete a skill certificate
+router.delete("/certificate/:index", protect, async (req, res, next) => {
+  try {
+    const { index } = req.params;
+    const user = await User.findById(req.user._id);
+    
+    if (user.skillCertificates && user.skillCertificates[index]) {
+      const certificateUrl = user.skillCertificates[index];
+      
+      try {
+        const publicId = extractPublicId(certificateUrl);
+        if (publicId) {
+          await cloudinaryDelete(publicId);
+        }
+      } catch (cloudErr) {
+        console.error("Error deleting from Cloudinary:", cloudErr);
+      }
+      
+      user.skillCertificates.splice(index, 1);
+      await user.save();
+    }
+    
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Search Users
+router.get("/search", protect, searchUsers);
+
+// Get single user by ID
+router.get("/:id", protect, getUserById); // ADDED
+
+module.exports = router;
