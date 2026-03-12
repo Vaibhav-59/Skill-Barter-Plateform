@@ -8,6 +8,29 @@ export default function UserDetailPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const handleFileDownload = async (url, defaultFilename) => {
+    try {
+      let filename = defaultFilename || "Document";
+      if (!filename.toLowerCase().endsWith(".pdf")) {
+        filename += ".pdf";
+      }
+
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error("Download failed via fetch, falling back to new tab:", err);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -439,7 +462,27 @@ export default function UserDetailPage() {
         )}
 
         {/* Skill Certificates */}
-        {user.skillCertificates && user.skillCertificates.length > 0 && (
+        {(() => {
+          // Gather certificates from both old and new format
+          const newCerts = user?.certificates || [];
+          const oldCerts = (user?.skillCertificates || []).filter(c => c && typeof c === 'string' && c.trim());
+          // Normalize: convert old certs to objects
+          const normalizedOld = oldCerts.map(url => ({
+            fileUrl: url,
+            fileType: /\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? 'image' : 'pdf',
+            fileName: url.split('/').pop() || 'Certificate',
+          }));
+          // Merge, preferring new format, deduplicated by URL
+          const seen = new Set();
+          const allCerts = [...newCerts, ...normalizedOld].filter(c => {
+            if (!c?.fileUrl || seen.has(c.fileUrl)) return false;
+            seen.add(c.fileUrl);
+            return true;
+          });
+
+          if (allCerts.length === 0) return null;
+
+          return (
           <div className="bg-gray-950/25 backdrop-blur-xl border border-gray-800/30 rounded-3xl shadow-xl p-8 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-amber-400/2 to-amber-400/0 opacity-0 hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
             
@@ -450,42 +493,14 @@ export default function UserDetailPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-white">Skill Certificates</h3>
+                <h3 className="text-2xl font-bold text-white">Skill Certificates ({allCerts.length})</h3>
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {user.skillCertificates.map((cert, index) => {
-                  if (!cert || typeof cert !== 'string' || !cert.trim()) {
-                    return null;
-                  }
-                  
-                  const isPdf = cert.toLowerCase().endsWith('.pdf');
-                  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(cert);
-                  const fileName = cert.split('/').pop() || `Certificate ${index + 1}`;
-                  
-                  if (!isPdf && !isImage) {
-                    const fileExt = cert.split('.').pop()?.toUpperCase() || 'FILE';
-                    return (
-                      <div
-                        key={index}
-                        className="bg-gray-900/30 backdrop-blur-sm border border-gray-800/25 rounded-2xl p-4 text-center"
-                      >
-                        <a
-                          href={cert}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex flex-col items-center justify-center h-32"
-                        >
-                          <svg className="w-12 h-12 text-amber-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <span className="text-xs text-slate-400">View File</span>
-                        </a>
-                        <p className="text-xs text-slate-500 mt-1 truncate">{fileName}</p>
-                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-900/50 text-amber-300 rounded mt-1 inline-block">{fileExt}</span>
-                      </div>
-                    );
-                  }
+                {allCerts.map((cert, index) => {
+                  const isPdf = cert.fileType === 'pdf' || cert.fileType === 'document';
+                  const isImage = cert.fileType === 'image';
+                  const fileName = cert.fileName || `Certificate ${index + 1}`;
                   
                   return (
                     <div
@@ -493,39 +508,55 @@ export default function UserDetailPage() {
                       className="group relative bg-gray-900/30 backdrop-blur-sm border border-gray-800/25 rounded-2xl overflow-hidden hover:border-amber-400/15 transition-all duration-300 transform hover:scale-105"
                     >
                       {isPdf ? (
-                        <a
-                          href={cert}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex flex-col items-center justify-center h-32 cursor-pointer"
+                        <div
+                          onClick={() => handleFileDownload(cert.fileUrl, fileName)}
+                          role="button"
+                          className="flex flex-col items-center justify-center h-32 cursor-pointer hover:bg-gray-800/40 transition-colors"
                         >
                           <svg className="w-16 h-16 text-red-400" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
                           </svg>
-                          <span className="text-xs text-slate-400 mt-2">Open PDF</span>
-                        </a>
-                      ) : (
+                          <span className="text-xs text-slate-400 mt-2 hover:text-red-400 transition-colors flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download PDF
+                          </span>
+                        </div>
+                      ) : isImage ? (
                         <a
-                          href={cert}
+                          href={cert.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="block cursor-pointer"
                         >
                           <img
-                            src={cert}
-                            alt={`Certificate ${index + 1}`}
+                            src={cert.fileUrl}
+                            alt={fileName}
                             className="w-full h-32 object-cover"
                             loading="lazy"
                           />
                         </a>
+                      ) : (
+                        <a
+                          href={cert.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center justify-center h-32 cursor-pointer hover:bg-gray-800/40 transition-colors"
+                        >
+                          <svg className="w-12 h-12 text-amber-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="text-xs text-slate-400">View File</span>
+                        </a>
                       )}
                       <div className="p-2 text-center flex items-center justify-center gap-2">
-                        <span className="text-xs text-slate-400">Certificate {index + 1}</span>
-                        {!isPdf && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">Image</span>
-                        )}
+                        <span className="text-xs text-slate-400 truncate max-w-[80%]">{fileName}</span>
                         {isPdf && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-red-900/50 text-red-300 rounded">PDF</span>
+                        )}
+                        {isImage && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-blue-900/50 text-blue-300 rounded">Image</span>
                         )}
                       </div>
                     </div>
@@ -534,7 +565,8 @@ export default function UserDetailPage() {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

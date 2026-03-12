@@ -408,17 +408,20 @@ export default function ChatPage() {
     }
   };
 
-  // Programmatic download: fetch as blob → create object URL → trigger download.
-  // This avoids the browser trying to render the file inline (which causes CORS errors for PDFs).
-  const handleDocumentDownload = async (url, fileName) => {
+  const handleDocumentDownload = async (url, fileName, isPdf = false) => {
     try {
-      const response = await fetch(url, { mode: "cors" });
+      let finalName = fileName || "document";
+      if (isPdf && !finalName.toLowerCase().endsWith('.pdf')) {
+        finalName += '.pdf';
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Fetch failed");
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = fileName || "document";
+      link.download = finalName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -800,7 +803,9 @@ export default function ChatPage() {
                                   <img
                                     src={message.media}
                                     alt="Shared image"
-                                    className="max-w-[250px] max-h-[300px] rounded-lg border border-white/10 cursor-pointer object-cover"
+                                    className="max-w-[250px] max-h-[300px] rounded-lg border border-white/10 cursor-pointer object-cover hover:opacity-90 transition-opacity"
+                                    onClick={() => window.open(message.media, '_blank')}
+                                    title="Click to view full image"
                                     loading="lazy"
                                     crossOrigin="anonymous"
                                     onError={(e) => {
@@ -839,11 +844,9 @@ export default function ChatPage() {
 
                                 return (
                                   <div className="mb-2">
-                                    {/* raw Cloudinary URL — direct navigation, no CORS issues */}
-                                    <a
-                                      href={message.media}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
+                                    <div
+                                      onClick={() => handleDocumentDownload(message.media, message.fileName, isPdf)}
+                                      role="button"
                                       className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-white/10 hover:bg-gray-700/50 transition-colors cursor-pointer"
                                     >
                                       <div className={`w-10 h-10 ${isPdf ? "bg-red-500/20" : "bg-blue-500/20"} rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -885,7 +888,7 @@ export default function ChatPage() {
                                           d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                                         />
                                       </svg>
-                                    </a>
+                                    </div>
                                   </div>
                                 );
                               })()}

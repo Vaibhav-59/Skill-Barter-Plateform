@@ -11,42 +11,61 @@
 const meetingRooms = new Map();
 
 module.exports = (io, socket) => {
-  const userId   = socket.userId;
-  const userName = socket.user?.name || "Unknown";
+  const userId = socket.userId;
+  // Resolved once at connection time from JWT; used by offer relay and logs
+  const serverName = socket.user?.name || "Participant";
 
   // ── joinMeeting ────────────────────────────────────────────────────────────
-  // Client sends: { meetingId }
-  // Server emits back to caller: { existingParticipants: [{socketId, userId, userName}] }
-  // Server broadcasts to room: userJoined { socketId, userId, userName }
-  socket.on("joinMeeting", ({ meetingId }) => {
+  socket.on("joinMeeting", ({ meetingId, userName: clientName }) => {
     if (!meetingId) return;
 
-    // Create the room if it doesn't exist
+    // Resolve display name: JWT is authoritative; fall back to client-supplied name
+    const resolvedName = (serverName !== "Participant" ? serverName : null) || clientName || serverName;
+
     if (!meetingRooms.has(meetingId)) {
       meetingRooms.set(meetingId, new Map());
     }
 
     const room = meetingRooms.get(meetingId);
 
-    // Build list of current participants BEFORE adding self
+    // ── Idempotent guard ───────────────────────────────────────────────────
+    // If this socket already joined this room (e.g. React StrictMode double-invoke
+    // or a stale re-render), skip the join logic to avoid duplicate entries.
+    if (room.has(socket.id)) {
+      console.log(`ℹ️  ${resolvedName} already in meeting ${meetingId} – ignoring duplicate join`);
+      // Re-send existingParticipants so client can recover if needed
+      const others = Array.from(room.values()).filter((p) => p.socketId !== socket.id);
+      socket.emit("existingParticipants", { existingParticipants: others });
+      return;
+    }
+
+    // Participants already in the room BEFORE this user joins
     const existingParticipants = Array.from(room.values());
 
-    // Add self to room
-    const participant = { socketId: socket.id, userId, userName };
+    // The first user in the room becomes the host
+    const isHost = existingParticipants.length === 0;
+
+    // Register this participant
+    const participant = {
+      socketId: socket.id,
+      userId,
+      userName: resolvedName,
+      isCamOff: false,
+      isMuted: false,
+      isScreenSharing: false,
+      isHost,
+    };
     room.set(socket.id, participant);
 
-    // Join the Socket.io room
     socket.join(`meeting_${meetingId}`);
-    socket.data.meetingId = meetingId; // remember for disconnect cleanup
+    socket.data.meetingId = meetingId;
 
-    console.log(
-      `🏠 ${userName} joined meeting ${meetingId} (${room.size} participants total)`
-    );
+    console.log(`🏠 ${resolvedName} joined meeting ${meetingId} (${room.size} total)`);
 
-    // Send caller the list of already-present participants so they can create offers
+    // Tell the joiner who's already here
     socket.emit("existingParticipants", { existingParticipants });
 
-    // Notify everyone else that a new user arrived
+    // Tell everyone else a new participant arrived
     socket.to(`meeting_${meetingId}`).emit("userJoined", participant);
   });
 
@@ -56,7 +75,7 @@ module.exports = (io, socket) => {
     io.to(targetSocketId).emit("meetingOffer", {
       fromSocketId: socket.id,
       fromUserId:   userId,
-      fromUserName: userName,
+      fromUserName: serverName,
       offer,
     });
   });
@@ -85,6 +104,25 @@ module.exports = (io, socket) => {
     socket.to(`meeting_${meetingId}`).emit("meetingChat", { from, text, timestamp });
   });
 
+  // ── toggleMedia ────────────────────────────────────────────────────────────
+  // Broadcast camera/mic/screen-share toggles.
+  // type: "audio"  → isMuted
+  // type: "video"  → isCamOff
+  // type: "screen" → isScreenSharing (isOff=false means sharing started)
+  socket.on("toggleMedia", ({ meetingId, type, isOff }) => {
+    const room = meetingRooms.get(meetingId);
+    if (room) {
+      const p = room.get(socket.id);
+      if (p) {
+        if (type === "video")  p.isCamOff        = isOff;
+        if (type === "audio")  p.isMuted          = isOff;
+        if (type === "screen") p.isScreenSharing  = !isOff; // isOff=false → sharing ON
+      }
+    }
+    // Forward to all OTHER participants in the room
+    socket.to(`meeting_${meetingId}`).emit("peerMediaToggled", { socketId: socket.id, type, isOff });
+  });
+
   // ── leaveMeeting ──────────────────────────────────────────────────────────
   // Client sends: { meetingId }
   socket.on("leaveMeeting", ({ meetingId }) => {
@@ -105,7 +143,7 @@ module.exports = (io, socket) => {
     room.delete(socket.id);
     socket.leave(`meeting_${meetingId}`);
 
-    console.log(`🚪 ${userName} left meeting ${meetingId} (${room.size} remaining)`);
+    console.log(`🚪 ${serverName} left meeting ${meetingId} (${room.size} remaining)`);
 
     // Notify remaining participants
     io.to(`meeting_${meetingId}`).emit("userLeft", { socketId: socket.id });

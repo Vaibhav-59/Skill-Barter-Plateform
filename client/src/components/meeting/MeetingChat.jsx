@@ -1,28 +1,31 @@
 import { useState, useEffect, useRef } from "react";
 
-/**
- * MeetingChat
- * In-meeting chat sidebar panel. Messages are local to the session
- * (no persistence) and relayed via Socket.io.
- */
+const STORAGE_KEY_PREFIX = "meetingChat_";
+
 export default function MeetingChat({ socket, meetingId, userName, onClose }) {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput]       = useState("");
+  const [messages, setMessages] = useState(() => {
+    const stored = localStorage.getItem(`${STORAGE_KEY_PREFIX}${meetingId}`);
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [input, setInput] = useState("");
   const endRef = useRef(null);
 
-  // Listen for incoming chat messages
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}${meetingId}`, JSON.stringify(messages));
+  }, [messages, meetingId]);
+
   useEffect(() => {
     if (!socket) return;
 
     const handler = ({ from, text, timestamp }) => {
-      setMessages((prev) => [...prev, { from, text, timestamp, own: false }]);
+      const newMessage = { from, text, timestamp, own: false };
+      setMessages((prev) => [...prev, newMessage]);
     };
 
     socket.on("meetingChat", handler);
     return () => socket.off("meetingChat", handler);
   }, [socket]);
 
-  // Auto-scroll
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -36,26 +39,28 @@ export default function MeetingChat({ socket, meetingId, userName, onClose }) {
     setInput("");
   };
 
+  const formatTime = (timestamp) => {
+    return new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
   return (
     <div className="flex flex-col h-full w-80 bg-gray-950/95 backdrop-blur-xl border-l border-white/10">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
         <h3 className="text-white font-semibold text-sm">Meeting Chat</h3>
         <button
           onClick={onClose}
           className="w-7 h-7 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
         >
-          <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
         {messages.length === 0 && (
           <p className="text-slate-500 text-xs text-center mt-8">
-            No messages yet. Say hello! 👋
+            No messages yet. Say hello!
           </p>
         )}
         {messages.map((m, i) => (
@@ -71,14 +76,13 @@ export default function MeetingChat({ socket, meetingId, userName, onClose }) {
               {m.text}
             </div>
             <span className="text-xs text-slate-600 mt-0.5">
-              {new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {formatTime(m.timestamp)}
             </span>
           </div>
         ))}
         <div ref={endRef} />
       </div>
 
-      {/* Input */}
       <form onSubmit={send} className="p-3 border-t border-white/10">
         <div className="flex gap-2">
           <input

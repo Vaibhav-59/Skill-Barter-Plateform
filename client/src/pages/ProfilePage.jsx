@@ -29,6 +29,7 @@ export default function ProfilePage() {
     experienceLevel: "",
     availability: [],
     skillCertificates: [],
+    certificates: [],
     certificatePreviews: [],
   });
 
@@ -43,6 +44,7 @@ export default function ProfilePage() {
     experienceLevel: "",
     availability: [],
     skillCertificates: [],
+    certificates: [],
     createdAt: null,
   });
   const [skills, setSkills] = useState([]);
@@ -80,10 +82,11 @@ export default function ProfilePage() {
     if (isEditing) {
       setForm(prev => ({
         ...prev,
+        certificates: profileData.certificates || [],
         skillCertificates: profileData.skillCertificates || [],
       }));
     }
-  }, [isEditing, profileData.skillCertificates]);
+  }, [isEditing, profileData.certificates, profileData.skillCertificates]);
 
   const openEditModal = () => {
     setForm(prev => ({
@@ -95,6 +98,7 @@ export default function ProfilePage() {
       role: profileData.role || "",
       experienceLevel: profileData.experienceLevel || "",
       availability: profileData.availability || [],
+      certificates: profileData.certificates || [],
       skillCertificates: profileData.skillCertificates || [],
     }));
     setCertificateFiles([]);
@@ -116,6 +120,7 @@ export default function ProfilePage() {
           role: userData.role || "",
           experienceLevel: userData.experienceLevel || "",
           availability: userData.availability || [],
+          certificates: userData.certificates || [],
           skillCertificates: userData.skillCertificates || [],
         });
 
@@ -127,6 +132,7 @@ export default function ProfilePage() {
           role: userData.role || "",
           experienceLevel: userData.experienceLevel || "",
           availability: userData.availability || [],
+          certificates: userData.certificates || [],
           skillCertificates: userData.skillCertificates || [],
           createdAt: userData.createdAt || null,
         });
@@ -192,6 +198,7 @@ export default function ProfilePage() {
         role: userData.role || "",
         experienceLevel: userData.experienceLevel || "",
         availability: userData.availability || [],
+        certificates: userData.certificates || [],
         skillCertificates: userData.skillCertificates || [],
         createdAt: userData.createdAt || null,
       });
@@ -204,6 +211,7 @@ export default function ProfilePage() {
         role: userData.role || "",
         experienceLevel: userData.experienceLevel || "",
         availability: userData.availability || [],
+        certificates: userData.certificates || [],
         skillCertificates: userData.skillCertificates || [],
       });
       
@@ -226,10 +234,10 @@ export default function ProfilePage() {
   const handleDeleteCertificate = async (index) => {
     try {
       await api.delete(`/users/certificate/${index}`);
-      const updatedCertificates = profileData.skillCertificates.filter((_, i) => i !== index);
-      setProfileData({ ...profileData, skillCertificates: updatedCertificates });
-      setForm({ ...form, skillCertificates: updatedCertificates });
-      dispatch(setProfile({ ...user, skillCertificates: updatedCertificates }));
+      const updatedCertificates = (profileData.certificates || []).filter((_, i) => i !== index);
+      setProfileData({ ...profileData, certificates: updatedCertificates });
+      setForm({ ...form, certificates: updatedCertificates });
+      dispatch(setProfile({ ...user, certificates: updatedCertificates }));
       showSuccess("Certificate deleted successfully");
       
       window.dispatchEvent(new Event('profileUpdated'));
@@ -239,8 +247,8 @@ export default function ProfilePage() {
   };
 
   const handleRemoveCertificateFromForm = (index) => {
-    const updatedCertificates = form.skillCertificates.filter((_, i) => i !== index);
-    setForm({ ...form, skillCertificates: updatedCertificates });
+    const updatedCertificates = (form.certificates || []).filter((_, i) => i !== index);
+    setForm({ ...form, certificates: updatedCertificates });
   };
 
   // teachSkills / learnSkills from local state (loaded on mount)
@@ -348,7 +356,7 @@ export default function ProfilePage() {
       !!(profileData.role || user?.role),                          // role
       effectiveTeachCount > 0,                                     // at least 1 teach skill
       effectiveLearnCount > 0,                                     // at least 1 learn skill
-      (profileData.skillCertificates?.length || 0) > 0,           // certificates
+      (profileData.certificates?.length || profileData.skillCertificates?.length || 0) > 0,           // certificates
     ];
     const filled = checkpoints.filter(Boolean).length;
     return Math.round((filled / checkpoints.length) * 100);
@@ -631,45 +639,87 @@ export default function ProfilePage() {
                     <span className="text-teal-400 font-semibold">{memberSince}</span>
                   </div>
                   
-                  {user?.skillCertificates && user.skillCertificates.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-slate-200 font-medium mb-2">Skill Certificates ({user.skillCertificates.length})</p>
-                      <div className="space-y-2">
-                        {user.skillCertificates.map((cert, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-500/12 to-purple-500/8 rounded-xl border border-blue-500/25 hover:border-blue-400/40 transition-all duration-300"
-                          >
-                            <span className="text-slate-300 text-sm truncate flex-1">
-                              {cert.split('/').pop()}
-                            </span>
-                            <div className="flex items-center gap-2 ml-2">
-                              <a
-                                href={cert.startsWith('http') ? cert : `${BASE_URL.replace('/api', '')}${cert}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-400 font-semibold hover:text-blue-300 flex items-center gap-1"
+                  {/* Certificates section — uses new structured format */}
+                  {(() => {
+                    // Gather certificates from both old and new format
+                    const newCerts = user?.certificates || [];
+                    const oldCerts = (user?.skillCertificates || []).filter(c => c && typeof c === 'string' && c.trim());
+                    // Normalize: convert old certs to objects
+                    const normalizedOld = oldCerts.map(url => ({
+                      fileUrl: url,
+                      fileType: /\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? 'image' : 'pdf',
+                      fileName: url.split('/').pop() || 'Certificate',
+                    }));
+                    // Merge, preferring new format, deduplicated by URL
+                    const seen = new Set();
+                    const allCerts = [...newCerts, ...normalizedOld].filter(c => {
+                      if (!c?.fileUrl || seen.has(c.fileUrl)) return false;
+                      seen.add(c.fileUrl);
+                      return true;
+                    });
+
+                    if (allCerts.length === 0) return null;
+
+                    return (
+                      <div className="mt-4">
+                        <p className="text-slate-200 font-medium mb-2">Skill Certificates ({allCerts.length})</p>
+                        <div className="space-y-2">
+                          {allCerts.map((cert, index) => {
+                            const isPdf = cert.fileType === 'pdf' || cert.fileType === 'document';
+                            return (
+                              <div
+                                key={index}
+                                className="flex justify-between items-center p-3 bg-gradient-to-r from-blue-500/12 to-purple-500/8 rounded-xl border border-blue-500/25 hover:border-blue-400/40 transition-all duration-300"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                View
-                              </a>
-                              <button
-                                onClick={() => handleDeleteCertificate(index)}
-                                className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition duration-200"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                                {/* Thumbnail or PDF icon */}
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  {isPdf ? (
+                                    <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                      <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  ) : (
+                                    <img
+                                      src={cert.fileUrl}
+                                      alt={cert.fileName}
+                                      className="w-10 h-10 object-cover rounded-lg flex-shrink-0"
+                                      loading="lazy"
+                                    />
+                                  )}
+                                  <span className="text-slate-300 text-sm truncate">
+                                    {cert.fileName || `Certificate ${index + 1}`}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 ml-2">
+                                  <a
+                                    href={cert.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 font-semibold hover:text-blue-300 flex items-center gap-1 text-sm"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    {isPdf ? 'Open PDF' : 'View'}
+                                  </a>
+                                  <button
+                                    onClick={() => handleDeleteCertificate(index)}
+                                    className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition duration-200"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -892,6 +942,7 @@ export default function ProfilePage() {
                 
                 <div className="relative z-10">
                   <EditProfile
+                    key={isEditing}
                     form={form}
                     setForm={setForm}
                     onSubmit={handleSubmit}

@@ -5,7 +5,7 @@ const fs = require("fs");
 
 const User = require("../models/User");
 const ErrorResponse = require("../utils/errorResponse");
-const { cloudinaryUpload, cloudinaryDelete, extractPublicId } = require("../middleware/upload");
+const { cloudinaryUploadCertificate, cloudinaryDelete, extractPublicId } = require("../middleware/upload");
 const { aiCache } = require("../middleware/aiCache");
 
 // Get current user profile
@@ -46,35 +46,65 @@ exports.updateProfile = async (req, res, next) => {
       updateData.role = role;
     }
 
+    // ── Handle certificate uploads ──────────────────────────────────────
+    // Fetch existing user to preserve old certificates
+    const existingUser = await User.findById(req.user._id);
+    const existingCerts = existingUser?.certificates || [];
+
     if (req.files && req.files.length > 0) {
-      const uploadedUrls = [];
-      console.log("Uploading", req.files.length, "files");
-      
+      const newCerts = [];
+      console.log("Uploading", req.files.length, "certificate files");
+
       for (const file of req.files) {
         try {
-          const result = await cloudinaryUpload(file.path, "SkillBarter/certificates");
-          uploadedUrls.push(result.secure_url);
-          console.log("Uploaded URL:", result.secure_url);
-          
-          fs.unlink(file.path, (err) => {
-            if (err) console.error("Error deleting local file:", err);
+          // Determine file type for the certificate object
+          let fileType = "document";
+          if (file.mimetype?.startsWith("image/")) {
+            fileType = "image";
+          } else if (file.mimetype === "application/pdf") {
+            fileType = "pdf";
+          }
+
+          // Upload using buffer (memoryStorage) — NOT file.path!
+          const result = await cloudinaryUploadCertificate(
+            file.buffer,
+            file.originalname,
+            file.mimetype
+          );
+
+          newCerts.push({
+            fileUrl: result.secure_url,
+            fileType,
+            fileName: file.originalname || "certificate",
           });
+
+          console.log("✅ Uploaded certificate:", result.secure_url, "type:", fileType);
         } catch (uploadError) {
-          console.error("Error uploading to Cloudinary:", uploadError);
+          console.error("❌ Error uploading certificate to Cloudinary:", uploadError);
         }
       }
-      
-      if (uploadedUrls.length > 0) {
-        const existingUser = await User.findById(req.user._id);
-        const existingCerts = existingUser && existingUser.skillCertificates ? existingUser.skillCertificates.filter(c => c) : [];
-        const allCerts = [...existingCerts, ...uploadedUrls];
-        updateData.skillCertificates = allCerts;
-        console.log("Uploaded certificates:", uploadedUrls.length, "Total certificates:", allCerts.length);
-      }
+
+      // Merge: keep all existing certs + add new ones
+      updateData.certificates = [...existingCerts, ...newCerts];
+      console.log("Total certificates after upload:", updateData.certificates.length);
     } else {
-      const existingUser = await User.findById(req.user._id);
-      if (existingUser && existingUser.skillCertificates) {
-        updateData.skillCertificates = existingUser.skillCertificates;
+      // No new files — preserve existing certificates
+      updateData.certificates = existingCerts;
+    }
+
+    // Also migrate old skillCertificates (plain strings) into new format if they exist
+    if (existingUser?.skillCertificates?.length > 0 && existingCerts.length === 0) {
+      const migratedCerts = existingUser.skillCertificates
+        .filter(url => url && typeof url === "string" && url.trim())
+        .map(url => ({
+          fileUrl: url,
+          fileType: /\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? "image" : "pdf",
+          fileName: url.split("/").pop() || "certificate",
+        }));
+
+      if (migratedCerts.length > 0) {
+        updateData.certificates = [...migratedCerts, ...(updateData.certificates || [])];
+        console.log("Migrated", migratedCerts.length, "old certificates to new format");
       }
     }
 
@@ -96,7 +126,7 @@ exports.updateProfile = async (req, res, next) => {
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find({ _id: { $ne: req.user._id } })
-      .select("name bio teachSkills learnSkills location role experienceLevel availability skillCertificates")
+      .select("name bio teachSkills learnSkills location role experienceLevel availability skillCertificates certificates")
       .limit(50);
 
     res.json(users);

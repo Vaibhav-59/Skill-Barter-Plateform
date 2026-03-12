@@ -70,6 +70,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     }],
+    certificates: [{
+      fileUrl:  { type: String, required: true },
+      fileType: { type: String, enum: ["image", "pdf", "document"], default: "image" },
+      fileName: { type: String, default: "" },
+    }],
     lastLogoutDate: {
       type: Date,
       default: null,

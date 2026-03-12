@@ -85,12 +85,23 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
       console.warn("Video+audio failed, trying audio-only:", videoErr.name);
 
       // ③ Graceful fallback: audio only (camera might genuinely be in use elsewhere)
-      if (videoErr.name === "NotReadableError" || videoErr.name === "NotFoundError") {
+      if (videoErr.name === "NotReadableError" || videoErr.name === "NotFoundError" || videoErr.name === "NotAllowedError") {
         try {
           const audioStream = await navigator.mediaDevices.getUserMedia({
             video: false,
             audio: { echoCancellation: true, noiseSuppression: true },
           });
+
+          // Create a dummy video track so the SDP still negotiates video.
+          // This allows us to use replaceTrack later without renegotiating!
+          const canvas = document.createElement("canvas");
+          canvas.width = 1;
+          canvas.height = 1;
+          const dummyVideoTrack = canvas.captureStream().getVideoTracks()[0];
+          dummyVideoTrack.enabled = false;
+          dummyVideoTrack.isDummy = true;
+          audioStream.addTrack(dummyVideoTrack);
+
           localStreamRef.current = audioStream;
           setIsCameraOff(true); // show camera-off UI automatically
           return audioStream;
@@ -110,6 +121,7 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
   // ── createPeerConnection ─────────────────────────────────────────────────────
   const createPeerConnection = useCallback((targetUserId) => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
+    pc.iceQueue = []; // For queueing ICE candidates before remote description
 
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) {
@@ -256,6 +268,13 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
       await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+      if (pc.iceQueue && pc.iceQueue.length > 0) {
+        for (const c of pc.iceQueue) {
+          try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (e) { console.error("Queued ICE error:", e) }
+        }
+        pc.iceQueue = [];
+      }
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
@@ -280,8 +299,34 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
     localStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = !t.enabled; });
     setIsMuted((p) => !p);
   };
-  const toggleCamera = () => {
+  const toggleCamera = async () => {
     if (!localStreamRef.current) return;
+
+    let vidTrack = localStreamRef.current.getVideoTracks()[0];
+
+    // If it's the dummy track, request a real video track and replace it seamlessly
+    if (vidTrack && vidTrack.isDummy && isCameraOff) {
+      try {
+        const realStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" } });
+        const realVidTrack = realStream.getVideoTracks()[0];
+        
+        localStreamRef.current.removeTrack(vidTrack);
+        localStreamRef.current.addTrack(realVidTrack);
+        
+        // Update the RTCPeerConnection sender
+        if (peerConnRef.current) {
+          const sender = peerConnRef.current.getSenders().find(s => s.track && s.track.kind === "video");
+          if (sender) sender.replaceTrack(realVidTrack);
+        }
+        
+        setIsCameraOff(false);
+        return;
+      } catch (err) {
+        console.error("Failed to get real video stream:", err);
+        return;
+      }
+    }
+
     localStreamRef.current.getVideoTracks().forEach((t) => { t.enabled = !t.enabled; });
     setIsCameraOff((p) => !p);
   };
@@ -304,7 +349,14 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
       startTimer();
       try {
         if (peerConnRef.current) {
-          await peerConnRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+          const pc = peerConnRef.current;
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+          if (pc.iceQueue && pc.iceQueue.length > 0) {
+            for (const c of pc.iceQueue) {
+              try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (e) { console.error("Queued ICE error:", e) }
+            }
+            pc.iceQueue = [];
+          }
         }
       } catch (err) { console.error("setRemoteDescription error:", err); }
     };
@@ -327,8 +379,14 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
 
     const onIceCandidate = async ({ candidate }) => {
       try {
-        if (peerConnRef.current && candidate) {
-          await peerConnRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        const pc = peerConnRef.current;
+        if (pc && candidate) {
+          if (pc.remoteDescription) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } else {
+            pc.iceQueue = pc.iceQueue || [];
+            pc.iceQueue.push(candidate);
+          }
         }
       } catch (err) { console.error("addIceCandidate error:", err); }
     };

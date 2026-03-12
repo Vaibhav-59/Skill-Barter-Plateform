@@ -54,10 +54,30 @@ router.get("/dashboard-stats", protect, getDashboardStats);
 router.delete("/certificate/:index", protect, async (req, res, next) => {
   try {
     const { index } = req.params;
+    const idx = parseInt(index, 10);
     const user = await User.findById(req.user._id);
     
-    if (user.skillCertificates && user.skillCertificates[index]) {
-      const certificateUrl = user.skillCertificates[index];
+    // Delete from new certificates array
+    if (user.certificates && user.certificates[idx]) {
+      const cert = user.certificates[idx];
+      
+      try {
+        const publicId = extractPublicId(cert.fileUrl);
+        if (publicId) {
+          // PDFs/documents are stored as "raw" in Cloudinary
+          const resourceType = cert.fileType === "image" ? "image" : "raw";
+          await cloudinaryDelete(publicId, resourceType);
+        }
+      } catch (cloudErr) {
+        console.error("Error deleting from Cloudinary:", cloudErr);
+      }
+      
+      user.certificates.splice(idx, 1);
+      await user.save();
+    }
+    // Fallback: also handle old skillCertificates format
+    else if (user.skillCertificates && user.skillCertificates[idx]) {
+      const certificateUrl = user.skillCertificates[idx];
       
       try {
         const publicId = extractPublicId(certificateUrl);
@@ -68,7 +88,7 @@ router.delete("/certificate/:index", protect, async (req, res, next) => {
         console.error("Error deleting from Cloudinary:", cloudErr);
       }
       
-      user.skillCertificates.splice(index, 1);
+      user.skillCertificates.splice(idx, 1);
       await user.save();
     }
     

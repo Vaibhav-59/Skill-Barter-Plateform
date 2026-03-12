@@ -26,6 +26,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import UserReviewsPage from "./pages/UserReviewsPage";
 import GlobalCallNotification from "./components/GlobalCallNotification";
 import MeetingPage from "./pages/MeetingPage";
+import MeetingRoom from "./pages/MeetingRoom";
 
 export default function App() {
   return (
@@ -55,8 +56,10 @@ export default function App() {
             <Route path="user/:id" element={<UserDetailPage />} />
             <Route path="user/:userId/reviews" element={<UserReviewsPage />} />
             <Route path="meeting" element={<MeetingPage />} />
-            <Route path="meeting/:meetingId" element={<MeetingPage />} />
           </Route>
+
+          {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}
+          <Route path="/meeting/:meetingId" element={<MeetingRoom />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>

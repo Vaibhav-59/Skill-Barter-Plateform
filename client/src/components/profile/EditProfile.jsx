@@ -61,13 +61,13 @@ export default function EditProfile({
   const fileInputRef = useRef(null);
   const isDark = theme === "dark";
 
-  const [existingCerts, setExistingCerts] = React.useState(form.skillCertificates || []);
+  const [existingCerts, setExistingCerts] = React.useState(form.certificates || form.skillCertificates || []);
   const [deletedCertIndices, setDeletedCertIndices] = React.useState([]);
 
   React.useEffect(() => {
-    setExistingCerts(form.skillCertificates || []);
+    setExistingCerts(form.certificates || form.skillCertificates || []);
     setDeletedCertIndices([]);
-  }, [form.skillCertificates]);
+  }, [form.certificates, form.skillCertificates]);
 
   // ── Helpers ─────────────────────────────────────────────────────────
   const location = form.location || {};
@@ -106,16 +106,14 @@ export default function EditProfile({
     setCertificatePreviews((certificatePreviews || []).filter((_, i) => i !== index));
   };
 
-  const handleDeleteExistingCert = async (cert) => {
-    const originalIndex = (form.skillCertificates || []).indexOf(cert);
-    if (originalIndex === -1) return;
+  const handleDeleteExistingCert = async (cert, index) => {
     try {
-      setDeletedCertIndices([...deletedCertIndices, originalIndex]);
-      setExistingCerts(existingCerts.filter((c) => c !== cert));
-      if (onDeleteCertificate) await onDeleteCertificate(originalIndex);
+      setDeletedCertIndices([...deletedCertIndices, index]);
+      setExistingCerts(existingCerts.filter((_, i) => i !== index));
+      if (onDeleteCertificate) await onDeleteCertificate(index);
     } catch {
-      setExistingCerts([...existingCerts, cert]);
-      setDeletedCertIndices(deletedCertIndices.filter((i) => i !== originalIndex));
+      setExistingCerts([...existingCerts]);
+      setDeletedCertIndices(deletedCertIndices.filter((i) => i !== index));
     }
   };
 
@@ -323,7 +321,13 @@ export default function EditProfile({
         {((certificateFiles?.length || 0) + (existingCerts?.length || 0)) > 0 && (
           <div className="space-y-2 mt-1">
             {existingCerts.map((cert, i) => {
-              const isPdf = cert?.toLowerCase().endsWith(".pdf");
+              // Support both new format (object with fileUrl/fileType/fileName) and old format (plain string)
+              const isObject = cert && typeof cert === "object" && cert.fileUrl;
+              const certUrl = isObject ? cert.fileUrl : cert;
+              const certType = isObject ? cert.fileType : (certUrl?.toLowerCase().endsWith(".pdf") ? "pdf" : "image");
+              const certName = isObject ? cert.fileName : (certUrl?.split("/").pop() || "Certificate");
+              const isPdf = certType === "pdf" || certType === "document";
+
               return (
                 <div key={`ex-${i}`} className="flex items-center gap-3 p-3 bg-gray-700/40 rounded-xl border border-gray-600/40">
                   {isPdf ? (
@@ -333,11 +337,14 @@ export default function EditProfile({
                       </svg>
                     </div>
                   ) : (
-                    <img src={cert} alt="cert" className="w-10 h-10 object-cover rounded-lg" />
+                    <img src={certUrl} alt="cert" className="w-10 h-10 object-cover rounded-lg" />
                   )}
-                  <span className="flex-1 text-sm text-gray-300 truncate">{cert?.split("/").pop()}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-md bg-blue-900/40 text-blue-300">Saved</span>
-                  <button type="button" onClick={() => handleDeleteExistingCert(cert)}
+                  <span className="flex-1 text-sm text-gray-300 truncate">{certName}</span>
+                  <a href={certUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-xs px-2 py-0.5 rounded-md bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 transition">
+                    {isPdf ? "View PDF" : "View"}
+                  </a>
+                  <button type="button" onClick={() => handleDeleteExistingCert(cert, i)}
                     className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

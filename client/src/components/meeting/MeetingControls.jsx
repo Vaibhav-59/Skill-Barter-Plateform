@@ -1,31 +1,28 @@
-/**
- * MeetingControls.jsx
- * Zoom-style bottom toolbar for the meeting room.
- */
-
 export default function MeetingControls({
   isMuted,
   isCamOff,
   isScreenSharing,
   isChatOpen,
+  isParticipantsOpen,
+  isRecording,
   participantCount,
   meetingId,
   onToggleMute,
   onToggleCam,
   onToggleScreen,
   onToggleChat,
+  onToggleParticipants,
+  onToggleRecording,
   onLeave,
 }) {
   const copyLink = () => {
     const url = `${window.location.origin}/meeting/${meetingId}`;
     navigator.clipboard.writeText(url).then(() => {
-      // Brief visual confirmation handled by parent or tooltip
     });
   };
 
   return (
     <div className="relative flex items-center justify-between px-6 py-4 bg-gray-950/95 backdrop-blur-xl border-t border-white/10">
-      {/* Left: meeting info */}
       <div className="flex items-center gap-3 min-w-0">
         <div className="hidden sm:flex flex-col">
           <span className="text-slate-400 text-xs font-medium">Meeting ID</span>
@@ -40,13 +37,11 @@ export default function MeetingControls({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
           </svg>
-          <span className="hidden sm:inline">Copy Link</span>
+          <span className="hidden sm:inline">Copy</span>
         </button>
       </div>
 
-      {/* Center: main controls */}
-      <div className="flex items-center gap-3">
-        {/* Mute */}
+      <div className="flex items-center gap-2">
         <ControlButton
           onClick={onToggleMute}
           active={isMuted}
@@ -64,7 +59,6 @@ export default function MeetingControls({
           }
         />
 
-        {/* Camera */}
         <ControlButton
           onClick={onToggleCam}
           active={isCamOff}
@@ -82,7 +76,6 @@ export default function MeetingControls({
           }
         />
 
-        {/* Screen Share */}
         <ControlButton
           onClick={onToggleScreen}
           active={isScreenSharing}
@@ -95,7 +88,35 @@ export default function MeetingControls({
           }
         />
 
-        {/* Chat */}
+        <ControlButton
+          onClick={onToggleRecording}
+          active={isRecording}
+          activeClass="bg-red-500/40 border-red-500/60 text-red-400 animate-pulse"
+          inactiveClass="bg-gray-800/60 border-gray-700/40 text-slate-300 hover:bg-gray-700/60 hover:text-white"
+          label={isRecording ? "Stop Rec" : "Record"}
+          icon={
+            isRecording ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.362a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            )
+          }
+        />
+
+        <ControlButton
+          onClick={onToggleParticipants}
+          active={isParticipantsOpen}
+          activeClass="bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+          inactiveClass="bg-gray-800/60 border-gray-700/40 text-slate-300 hover:bg-gray-700/60 hover:text-white"
+          label="People"
+          icon={
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          }
+        />
+
         <ControlButton
           onClick={onToggleChat}
           active={isChatOpen}
@@ -108,12 +129,11 @@ export default function MeetingControls({
           }
         />
 
-        {/* Leave — prominent red button */}
         <button
           onClick={onLeave}
-          className="flex flex-col items-center gap-1 group"
+          className="flex flex-col items-center gap-1 group ml-2"
         >
-          <div className="w-12 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 group-hover:scale-110 transition-all duration-200 border border-red-400/30">
+          <div className="w-14 h-12 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 group-hover:scale-110 transition-all duration-200 border border-red-400/30">
             <svg className="w-5 h-5 text-white rotate-[135deg]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -123,7 +143,6 @@ export default function MeetingControls({
         </button>
       </div>
 
-      {/* Right: participant count */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800/50 border border-gray-700/40 rounded-xl">
           <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -137,7 +156,6 @@ export default function MeetingControls({
   );
 }
 
-// ── Reusable control button ────────────────────────────────────────────────────
 function ControlButton({ onClick, active, activeClass, inactiveClass, label, icon }) {
   return (
     <button onClick={onClick} className="flex flex-col items-center gap-1 group">
