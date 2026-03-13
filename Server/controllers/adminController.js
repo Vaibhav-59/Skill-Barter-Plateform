@@ -2,6 +2,7 @@ const User = require("../models/User");
 const Skill = require("../models/Skill");
 const Match = require("../models/Match");
 const Review = require("../models/Review");
+const Meeting = require("../models/Meeting");
 const ErrorResponse = require("../utils/errorResponse");
 
 const INACTIVE_REMINDER_DAY = 10;
@@ -95,6 +96,20 @@ exports.getAdminStats = async (req, res, next) => {
         message: `Match between ${m.requester?.name || 'User'} and ${m.receiver?.name || 'User'}`,
         timestamp: m.createdAt,
         severity: "success"
+      });
+    });
+
+    // Meeting History from DB
+    const newMeetings = await Meeting.find({})
+      .sort({ startedAt: -1 })
+      .limit(3);
+      
+    newMeetings.forEach(m => {
+      recentActivities.push({
+        type: m.status === "active" ? "meeting_active" : "meeting_ended",
+        message: `Video Meeting ${m.meetingId} (${m.participants.length} connected)`,
+        timestamp: m.startedAt,
+        severity: m.status === "active" ? "info" : "warning"
       });
     });
 
@@ -449,5 +464,28 @@ exports.deleteInactiveUser = async (req, res, next) => {
     res.status(200).json({ success: true, message: "User deleted" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// @desc    Get all meetings (Live & Historical)
+// @route   GET /api/admin/meetings
+// @access  Private/Admin
+exports.getActiveMeetings = async (req, res, next) => {
+  try {
+    const meetings = await Meeting.find({})
+      .populate("host", "name email avatar")
+      .populate("participants", "name email avatar")
+      .sort({ startedAt: -1 });
+      
+    // Fetch live details from socket if needed, but DB is strictly enough
+    // for a complete overview.
+
+    res.status(200).json({
+      success: true,
+      data: meetings
+    });
+  } catch (error) {
+    console.error("getMeetings error:", error);
+    res.status(500).json({ success: false, message: "Server error fetching meetings" });
   }
 };

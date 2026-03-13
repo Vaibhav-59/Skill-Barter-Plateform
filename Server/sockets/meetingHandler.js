@@ -9,24 +9,52 @@
 
 // Global meeting room store (survives individual socket reconnects)
 const meetingRooms = new Map();
+const Meeting = require("../models/Meeting");
 
 module.exports = (io, socket) => {
+  // Expose active meetings for the admin dashboard
+  if (!io.getActiveMeetings) {
+    io.getActiveMeetings = () => {
+      const active = [];
+      for (const [meetingId, roomMap] of meetingRooms.entries()) {
+        active.push({
+          meetingId,
+          participantCount: roomMap.participants.size,
+          createdAt: roomMap.createdAt,
+          participants: Array.from(roomMap.participants.values()).map((p) => ({
+            userId: p.userId,
+            userName: p.userName,
+            isHost: p.isHost,
+            isCamOff: p.isCamOff,
+            isMuted: p.isMuted,
+            isScreenSharing: p.isScreenSharing,
+          })),
+        });
+      }
+      return active;
+    };
+  }
+
   const userId = socket.userId;
   // Resolved once at connection time from JWT; used by offer relay and logs
   const serverName = socket.user?.name || "Participant";
 
   // ── joinMeeting ────────────────────────────────────────────────────────────
-  socket.on("joinMeeting", ({ meetingId, userName: clientName }) => {
+  socket.on("joinMeeting", async ({ meetingId, userName: clientName }) => {
     if (!meetingId) return;
 
     // Resolve display name: JWT is authoritative; fall back to client-supplied name
     const resolvedName = (serverName !== "Participant" ? serverName : null) || clientName || serverName;
 
     if (!meetingRooms.has(meetingId)) {
-      meetingRooms.set(meetingId, new Map());
+      meetingRooms.set(meetingId, {
+        participants: new Map(),
+        createdAt: new Date()
+      });
     }
 
-    const room = meetingRooms.get(meetingId);
+    const roomData = meetingRooms.get(meetingId);
+    const room = roomData.participants;
 
     // ── Idempotent guard ───────────────────────────────────────────────────
     // If this socket already joined this room (e.g. React StrictMode double-invoke
@@ -56,6 +84,30 @@ module.exports = (io, socket) => {
       isHost,
     };
     room.set(socket.id, participant);
+
+    // Write to MongoDB asynchronously for History/Admin analysis
+    try {
+      if (isHost) {
+        await Meeting.findOneAndUpdate(
+          { meetingId },
+          { 
+            meetingId,
+            host: userId,
+            status: "active",
+            startedAt: new Date(),
+            $addToSet: { participants: userId }
+          },
+          { upsert: true, new: true }
+        );
+      } else {
+        await Meeting.updateOne(
+          { meetingId },
+          { $addToSet: { participants: userId } }
+        );
+      }
+    } catch (err) {
+      console.error("DB Meeting Sync Error [Join]:", err.message);
+    }
 
     socket.join(`meeting_${meetingId}`);
     socket.data.meetingId = meetingId;
@@ -110,9 +162,9 @@ module.exports = (io, socket) => {
   // type: "video"  → isCamOff
   // type: "screen" → isScreenSharing (isOff=false means sharing started)
   socket.on("toggleMedia", ({ meetingId, type, isOff }) => {
-    const room = meetingRooms.get(meetingId);
-    if (room) {
-      const p = room.get(socket.id);
+    const roomObj = meetingRooms.get(meetingId);
+    if (roomObj) {
+      const p = roomObj.participants.get(socket.id);
       if (p) {
         if (type === "video")  p.isCamOff        = isOff;
         if (type === "audio")  p.isMuted          = isOff;
@@ -137,21 +189,27 @@ module.exports = (io, socket) => {
 
   // ── Helper: remove from room + notify peers ────────────────────────────────
   function handleLeave(meetingId) {
-    const room = meetingRooms.get(meetingId);
-    if (!room) return;
+    const roomObj = meetingRooms.get(meetingId);
+    if (!roomObj) return;
 
-    room.delete(socket.id);
+    roomObj.participants.delete(socket.id);
     socket.leave(`meeting_${meetingId}`);
 
-    console.log(`🚪 ${serverName} left meeting ${meetingId} (${room.size} remaining)`);
+    console.log(`🚪 ${serverName} left meeting ${meetingId} (${roomObj.participants.size} remaining)`);
 
     // Notify remaining participants
     io.to(`meeting_${meetingId}`).emit("userLeft", { socketId: socket.id });
 
     // Clean up empty rooms
-    if (room.size === 0) {
+    if (roomObj.participants.size === 0) {
       meetingRooms.delete(meetingId);
       console.log(`🗑️  Meeting room ${meetingId} deleted (empty)`);
+
+      // Update DB to ended
+      Meeting.updateOne(
+        { meetingId, status: "active" },
+        { $set: { status: "ended", endedAt: new Date() } }
+      ).catch(err => console.error("DB Meeting Sync Error [End]:", err.message));
     }
 
     delete socket.data.meetingId;

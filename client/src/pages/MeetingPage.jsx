@@ -10,6 +10,7 @@ export default function MeetingPage() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     return user.name || "";
   });
+  
   const [error, setError] = useState("");
 
   const createMeeting = () => {

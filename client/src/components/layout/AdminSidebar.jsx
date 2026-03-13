@@ -7,6 +7,7 @@ const adminLinks = [
   { path: "/admin/skills", label: "Skill Management" },
   { path: "/admin/stats", label: "Statistics" },
   { path: "/admin/data-analysis", label: "Data Analysis" },
+  { path: "/admin/meetings", label: "Active Meetings" },
 ];
 
 export default function AdminSidebar() {

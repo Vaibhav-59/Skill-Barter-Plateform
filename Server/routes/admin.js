@@ -15,6 +15,7 @@ const {
   getInactiveUsers,
   cleanupInactiveUsers,
   deleteInactiveUser,
+  getActiveMeetings,
 } = require("../controllers/adminController");
 
 // TEMPORARY: Open access for testing - remove after debugging
@@ -42,5 +43,8 @@ router.delete("/reviews/:id", deleteReview);
 // Skills
 router.get("/skills", getAllSkills);
 router.delete("/skills/:id", deleteSkill);
+
+// Meetings
+router.get("/meetings", getActiveMeetings);
 
 module.exports = router;
