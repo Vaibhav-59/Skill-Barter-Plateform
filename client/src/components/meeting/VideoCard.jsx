@@ -11,23 +11,28 @@ export default function VideoCard({
   const videoRef = useRef(null);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream || null;
     }
   }, [stream]);
 
   return (
     <div className="relative bg-gray-900 rounded-2xl overflow-hidden flex items-center justify-center w-full h-full shadow-xl border border-white/5 group transition-all duration-300 hover:border-emerald-500/30 hover:shadow-emerald-500/10">
-      {stream && !isCamOff ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted={isLocal}
-          className={`w-full h-full object-cover ${isLocal && !isScreenShare ? "scale-x-[-1]" : ""}`}
-        />
-      ) : (
-        <div className="flex flex-col items-center justify-center gap-3 w-full h-full bg-gradient-to-br from-gray-800 to-gray-900">
+      {/* 
+        CRITICAL FIX: Always keep the <video> element active in the DOM. 
+        If we unmount the video tag when isCamOff is true, the user's audio track 
+        is also unmounted, meaning we can no longer hear them. 
+      */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={isLocal}
+        className={`w-full h-full object-cover ${isLocal && !isScreenShare ? "scale-x-[-1]" : ""} ${(!stream || isCamOff) ? "opacity-0" : "opacity-100"}`}
+      />
+
+      {(!stream || isCamOff) && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 w-full h-full bg-gradient-to-br from-gray-800 to-gray-900">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg text-white font-bold text-2xl select-none">
             {name?.[0]?.toUpperCase() || "?"}
           </div>

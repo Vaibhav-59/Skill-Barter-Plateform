@@ -61,7 +61,10 @@ class SocketService {
   }
 
   emit(event, data) {
-    if (this.socket && this.connected) {
+    // Check socket.connected directly — this.connected can be stale during reconnects.
+    // Checking the socket's own property ensures signaling (ICE, offer, answer) is
+    // never silently dropped when the socket is actually live.
+    if (this.socket?.connected) {
       this.socket.emit(event, data);
     } else {
       console.warn("Socket not connected, cannot emit:", event);

@@ -85,9 +85,9 @@ exports.getSmartMatches = async (req, res, next) => {
     currentUser.averageRating = currentUserReviewStats.averageRating || 0;
     currentUser.totalReviews = currentUserReviewStats.totalReviews || 0;
 
-    console.log(`🔍 Debug: Current user skillsOffered:`, currentUser.skillsOffered);
-    console.log(`🔍 Debug: Current user skillsWanted:`, currentUser.skillsWanted);
-    console.log(`🔍 Debug: Current user reviews:`, currentUserReviewStats);
+    // console.log(`🔍 Debug: Current user skillsOffered:`, currentUser.skillsOffered);
+    // console.log(`🔍 Debug: Current user skillsWanted:`, currentUser.skillsWanted);
+    // console.log(`🔍 Debug: Current user reviews:`, currentUserReviewStats);
 
     // Get potential matches (exclude current user, blocked users, existing matches)
     const existingMatches = await Match.find({
@@ -117,15 +117,15 @@ exports.getSmartMatches = async (req, res, next) => {
 
     // Debug: Log total users in database
     const totalUsers = await User.countDocuments({ _id: { $ne: userId } });
-    console.log(`🔍 Debug: Total users in DB (excluding self): ${totalUsers}`);
+    // console.log(`🔍 Debug: Total users in DB (excluding self): ${totalUsers}`);
 
     // Get potential matches
     const potentialMatches = await User.find(matchQuery)
       .limit(maxResults)
       .lean();
 
-    console.log(`🔍 Debug: Found ${potentialMatches.length} potential matches for user ${userId}`);
-    console.log(`🔍 Debug: Excluded user IDs:`, excludedUserIds.length);
+    // console.log(`🔍 Debug: Found ${potentialMatches.length} potential matches for user ${userId}`);
+    // console.log(`🔍 Debug: Excluded user IDs:`, excludedUserIds.length);
 
     // Fetch review stats for all potential matches
     const matchUserIds = potentialMatches.map(u => u._id);
@@ -151,7 +151,7 @@ exports.getSmartMatches = async (req, res, next) => {
       };
     });
 
-    console.log(`🔍 Debug: Review stats for matches:`, reviewStatsMap);
+    // console.log(`🔍 Debug: Review stats for matches:`, reviewStatsMap);
 
     // Map fields for each potential match
     potentialMatches.forEach((user) => {
@@ -246,9 +246,9 @@ exports.getSmartMatches = async (req, res, next) => {
       return match.compatibilityScore >= minCompatibility;
     });
 
-    console.log(`🔍 Debug: Calculated ${smartMatches.length} smart matches`);
-    console.log(`🔍 Debug: Compatibility scores:`, smartMatches.slice(0, 5).map(m => ({ id: m.user._id, score: m.compatibilityScore, matchType: m.matchType })));
-    console.log(`🔍 Debug: Filtered to ${filteredMatches.length} matches with minCompatibility >= ${minCompatibility}`);
+   // console.log(`🔍 Debug: Calculated ${smartMatches.length} smart matches`);
+    //console.log(`🔍 Debug: Compatibility scores:`, smartMatches.slice(0, 5).map(m => ({ id: m.user._id, score: m.compatibilityScore, matchType: m.matchType })));
+    //console.log(`🔍 Debug: Filtered to ${filteredMatches.length} matches with minCompatibility >= ${minCompatibility}`);
 
     // Apply pagination
     const startIndex = (page - 1) * limit;
@@ -637,7 +637,7 @@ exports.getMyMatches = async (req, res, next) => {
     const userId = req.user._id;
     const { status, page = 1, limit = 10 } = req.query;
 
-    console.log("Getting matches for user:", userId.toString());
+    // console.log("Getting matches for user:", userId.toString());
 
     let query = {
       $or: [{ requester: userId }, { receiver: userId }],
@@ -663,7 +663,7 @@ exports.getMyMatches = async (req, res, next) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    console.log("Found matches:", matches.length);
+    // console.log("Found matches:", matches.length);
 
     const total = await Match.countDocuments(query);
 

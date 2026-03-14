@@ -3,14 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchUsersAsync,
   deleteUserAsync,
-  updateUserAsync,
   clearError,
 } from "../../redux/slices/adminSlice";
 import { showError, showSuccess } from "../../utils/toast";
-import Button from "../common/Button";
 import Modal from "../common/Modal";
 
-const UserRow = ({ user, onEdit, onDelete, isDeleting }) => {
+const UserRow = ({ user, onDelete, isDeleting }) => {
   const getStatusColor = (isActive) => {
     return isActive 
       ? "bg-gradient-to-r from-emerald-400/25 to-green-500/25 text-emerald-400 border border-emerald-400/40 shadow-sm" 
@@ -73,7 +71,7 @@ const UserRow = ({ user, onEdit, onDelete, isDeleting }) => {
       <td className="px-8 py-6 whitespace-nowrap">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-emerald-500 rounded-lg flex items-center justify-center text-white text-sm font-bold mr-3 shadow-md">
-            {user.skillsCount || 0}
+            {(user.teachSkills?.length || 0) + (user.learnSkills?.length || 0)}
           </div>
           <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors duration-300">skills</span>
         </div>
@@ -85,13 +83,6 @@ const UserRow = ({ user, onEdit, onDelete, isDeleting }) => {
 
       <td className="px-8 py-6 whitespace-nowrap text-right text-sm font-medium">
         <div className="flex items-center justify-end gap-3">
-          <button
-            onClick={() => onEdit(user)}
-            className="group/btn relative px-5 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-lg hover:from-teal-600 hover:to-emerald-600 transition-all duration-300 font-medium border border-teal-400/30 shadow-lg hover:shadow-emerald-500/20"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-400/20 to-emerald-400/20 rounded-lg opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300"></div>
-            <span className="relative">Edit</span>
-          </button>
           <button
             onClick={() => onDelete(user)}
             disabled={isDeleting === user._id}
@@ -222,10 +213,8 @@ export default function UserManagement() {
     role: "",
     page: 1,
   });
-  const [editModal, setEditModal] = useState({ show: false, user: null });
   const [deleteModal, setDeleteModal] = useState({ show: false, user: null });
   const [deletingId, setDeletingId] = useState(null);
-  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUsersAsync(filters));
@@ -248,24 +237,6 @@ export default function UserManagement() {
 
   const handlePageChange = (page) => {
     setFilters((prev) => ({ ...prev, page }));
-  };
-
-  const handleEditUser = (user) => {
-    setEditModal({ show: true, user });
-  };
-
-  const handleSaveUser = async (userId, userData) => {
-    setUpdating(true);
-    try {
-      await dispatch(updateUserAsync({ userId, userData })).unwrap();
-      showSuccess("User updated successfully");
-      setEditModal({ show: false, user: null });
-      dispatch(fetchUsersAsync(filters));
-    } catch (error) {
-      showError(error?.message || "Failed to update user");
-    } finally {
-      setUpdating(false);
-    }
   };
 
   const handleDeleteUser = (user) => {
@@ -459,7 +430,6 @@ export default function UserManagement() {
                     <UserRow
                       key={user._id}
                       user={user}
-                      onEdit={handleEditUser}
                       onDelete={handleDeleteUser}
                       isDeleting={deletingId}
                     />
@@ -471,15 +441,6 @@ export default function UserManagement() {
 
           {renderPagination()}
         </div>
-
-        {/* Edit User Modal */}
-        <EditUserModal
-          user={editModal.user}
-          isOpen={editModal.show}
-          onClose={() => setEditModal({ show: false, user: null })}
-          onSave={handleSaveUser}
-          loading={updating}
-        />
 
         {/* Delete Confirmation Modal */}
         <Modal

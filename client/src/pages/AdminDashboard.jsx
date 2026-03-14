@@ -633,7 +633,7 @@ export default function AdminDashboard() {
                   />
                 </svg>
               }
-              onClick={() => handleQuickAction("analytics")}
+              onClick={() => handleQuickAction("data-analysis")}
             />
           </div>
         </div>

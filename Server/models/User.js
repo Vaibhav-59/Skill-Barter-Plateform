@@ -43,17 +43,23 @@ const userSchema = new mongoose.Schema(
     },
 
     teachSkills: [
-      {
-        name: String,
-        level: String,
-      },
+      new mongoose.Schema(
+        {
+          name: String,
+          level: String,
+        },
+        { timestamps: true }
+      ),
     ],
 
     learnSkills: [
-      {
-        name: String,
-        level: String,
-      },
+      new mongoose.Schema(
+        {
+          name: String,
+          level: String,
+        },
+        { timestamps: true }
+      ),
     ],
 
     availability: [String],

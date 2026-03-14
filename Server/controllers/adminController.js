@@ -323,15 +323,19 @@ exports.getAllSkills = async (req, res, next) => {
     const allSkills = [];
     
     users.forEach(user => {
+      const teachSet = new Set((user.teachSkills || []).map(s => s._id?.toString()));
       [...(user.teachSkills || []), ...(user.learnSkills || [])].forEach(skill => {
         if (!search || (skill.name && skill.name.toLowerCase().includes(search.toLowerCase()))) {
+          const skillCreatedAt = skill.createdAt instanceof Date && !isNaN(skill.createdAt)
+            ? skill.createdAt
+            : (user.createdAt || new Date());
           allSkills.push({
             _id: skill._id,
             name: skill.name,
-            type: user.teachSkills?.includes(skill) ? "teach" : "learn",
+            type: teachSet.has(skill._id?.toString()) ? "teach" : "learn",
             level: skill.level || "Beginner",
             user: { _id: user._id, name: user.name, email: user.email },
-            createdAt: skill.createdAt || user.createdAt
+            createdAt: skillCreatedAt
           });
         }
       });
