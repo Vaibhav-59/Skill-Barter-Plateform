@@ -12,6 +12,7 @@ const errorHandler = require("./middleware/error");
 const { checkInactiveUsers } = require("./utils/inactiveUserHandler");
 
 dotenv.config();
+// Load env vars
 
 // Env Check
 const requiredEnv = [
@@ -75,6 +76,8 @@ app.use("/api/admin", require("./routes/admin"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/schedules", require("./routes/schedules"));
 app.use("/api/progress", require("./routes/progress"));
+app.use("/api/mentor", require("./routes/mentor"));
+
 
 // Test route
 app.get("/", (req, res) => {

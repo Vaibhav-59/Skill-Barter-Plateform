@@ -28,6 +28,7 @@ import UserReviewsPage from "./pages/UserReviewsPage";
 import GlobalCallNotification from "./components/GlobalCallNotification";
 import MeetingPage from "./pages/MeetingPage";
 import MeetingRoom from "./pages/MeetingRoom";
+import SkillMentor from "./components/SkillMentor";
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
       <SocketProvider>
         <Router>
         <GlobalCallNotification />
+        <SkillMentor />
         <Routes>
           {/* Public Routes */}
           <Route index element={<HomePage />} />
