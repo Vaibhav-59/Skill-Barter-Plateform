@@ -29,6 +29,33 @@ exports.createSession = async (req, res) => {
       notes,
     });
 
+    // Auto-sync schedule to active contract if one exists
+    try {
+      const SkillContract = require("../models/SkillContract");
+      const activeContract = await SkillContract.findOne({
+        status: "active",
+        $or: [
+          { userA: hostUser, userB: participantUser },
+          { userA: participantUser, userB: hostUser },
+        ],
+      });
+
+      if (activeContract) {
+        const pendingSlot = activeContract.sessions.find((s) => s.status === "pending");
+        if (pendingSlot) {
+          pendingSlot.status = "scheduled";
+          pendingSlot.date = date;
+          pendingSlot.startTime = startTime;
+          pendingSlot.endTime = endTime;
+          if (meetingLink) pendingSlot.meetingLink = meetingLink;
+          if (notes) pendingSlot.notes = notes;
+          await activeContract.save();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync session with contract:", err);
+    }
+
     res.status(201).json({
       success: true,
       data: session,
@@ -135,6 +162,30 @@ exports.completeSession = async (req, res) => {
 
     session.status = "completed";
     await session.save();
+
+    // Auto-sync complete to active contract if one exists
+    try {
+      const SkillContract = require("../models/SkillContract");
+      const activeContract = await SkillContract.findOne({
+        status: "active",
+        $or: [
+          { userA: session.hostUser, userB: session.participantUser },
+          { userA: session.participantUser, userB: session.hostUser },
+        ],
+      });
+
+      if (activeContract) {
+        // Find the first session that is not completed
+        const slot = activeContract.sessions.find((s) => s.status !== "completed" && s.status !== "cancelled");
+        if (slot) {
+          slot.status = "completed";
+          activeContract.syncCompletedSessions();
+          await activeContract.save();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync session completion with contract:", err);
+    }
 
     res.status(200).json({
       success: true,

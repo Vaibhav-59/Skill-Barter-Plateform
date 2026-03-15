@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const Session = require("../models/Session");
 const { sendSessionReminder } = require("../services/reminderService");
+const { sendContractReminders } = require("../services/contractReminderService");
 
 const startCronJobs = (app) => {
   // Run every minute
@@ -55,6 +56,14 @@ const startCronJobs = (app) => {
       }
     } catch (error) {
       console.error("Cron Job Error:", error);
+    }
+
+    // Contract session reminders
+    try {
+      const io = app.get("io");
+      await sendContractReminders(io);
+    } catch (err) {
+      console.error("Contract Reminder Cron Error:", err);
     }
   });
 };

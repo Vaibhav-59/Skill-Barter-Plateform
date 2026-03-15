@@ -34,6 +34,7 @@ import MeetingRoom from "./pages/MeetingRoom";
 import SkillMentor from "./components/SkillMentor";
 import SessionScheduler from "./pages/SessionScheduler";
 import SessionReminder from "./components/session/SessionReminder";
+import SmartContractPage from "./pages/SmartContractPage";
 
 export default function App() {
   return (
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="user/:userId/reviews" element={<UserReviewsPage />} />
             <Route path="meeting" element={<MeetingPage />} />
             <Route path="sessions" element={<SessionScheduler />} />
+            <Route path="contracts" element={<SmartContractPage />} />
           </Route>
 
           {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}

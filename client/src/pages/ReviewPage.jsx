@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import api from "../utils/api";
 import { showError, showSuccess } from "../utils/toast";
@@ -8,6 +8,9 @@ export default function ReviewPage() {
   const { matchId } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const type = searchParams.get("type") || "match";
 
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,17 +33,18 @@ export default function ReviewPage() {
 
   const fetchMatch = async () => {
     try {
-      const response = await api.get(`/matches/${matchId}`);
+      const endpoint = type === "contract" ? `/contracts/${matchId}` : `/matches/${matchId}`;
+      const response = await api.get(endpoint);
       const matchData = response.data.data;
       if (matchData.status !== "completed") {
-        showError("Can only review completed matches");
-        navigate("/matches");
+        showError(`Can only review completed ${type}s`);
+        navigate(type === "contract" ? "/contracts" : "/matches");
         return;
       }
       setMatch(matchData);
     } catch (err) {
-      showError("Failed to load match details");
-      navigate("/matches");
+      showError(`Failed to load ${type} details`);
+      navigate(type === "contract" ? "/contracts" : "/matches");
     } finally {
       setLoading(false);
     }
@@ -54,7 +58,8 @@ export default function ReviewPage() {
     }
     setSubmitting(true);
     try {
-      await api.post(`/matches/${matchId}/review`, {
+      const endpoint = type === "contract" ? `/contracts/${matchId}/review` : `/matches/${matchId}/review`;
+      await api.post(endpoint, {
         rating: review.rating,
         comment: review.comment,
         skillDelivered: review.skillDelivered,
@@ -63,11 +68,11 @@ export default function ReviewPage() {
         communication: review.communication,
         reliability: review.reliability,
         reviewee: otherUser._id,
-        skillOffered: skillIOffered,
-        skillRequested: skillIRequested,
+        skillOffered: taughtSkillInfo.name,
+        skillRequested: learnedSkillInfo.name,
       });
       showSuccess("Review submitted successfully!");
-      navigate("/matches");
+      navigate(type === "contract" ? "/contracts" : "/matches");
     } catch (err) {
       showError(err.response?.data?.message || "Failed to submit review");
     } finally {
@@ -132,9 +137,18 @@ export default function ReviewPage() {
     );
   }
 
-  const otherUser = match.requester._id === user._id ? match.receiver : match.requester;
-  const skillIOffered = match.skillOffered;
-  const skillIRequested = match.skillRequested;
+  const isA = type === "contract" ? (match.userA?._id === user._id) : false;
+  const otherUser = type === "contract" 
+    ? (isA ? match.userB : match.userA)
+    : (match.requester?._id === user._id ? match.receiver : match.requester);
+    
+  const skillIOffered = type === "contract" 
+    ? (isA ? match.skillTeach : match.skillLearn)
+    : match.skillOffered;
+    
+  const skillIRequested = type === "contract"
+    ? (isA ? match.skillLearn : match.skillTeach)
+    : match.skillRequested;
   
   const otherUserTeachSkills = otherUser?.teachSkills || [];
   const otherUserLearnSkills = otherUser?.learnSkills || [];
@@ -412,7 +426,7 @@ export default function ReviewPage() {
           <div className="flex justify-center gap-4 pt-2">
             <button
               type="button"
-              onClick={() => navigate("/matches")}
+              onClick={() => navigate(type === "contract" ? "/contracts" : "/matches")}
               disabled={submitting}
               className="px-10 py-4 bg-slate-800 border border-slate-700 text-slate-300 rounded-2xl hover:bg-slate-700 disabled:opacity-50 transition-all font-semibold"
             >

@@ -79,6 +79,7 @@ app.use("/api/schedules", require("./routes/schedules"));
 app.use("/api/progress", require("./routes/progress"));
 app.use("/api/mentor", require("./routes/mentor"));
 app.use("/api/sessions", require("./routes/sessionRoutes"));
+app.use("/api/contracts", require("./routes/contractRoutes"));
 
 
 // Test route
