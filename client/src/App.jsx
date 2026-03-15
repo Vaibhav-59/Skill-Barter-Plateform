@@ -24,6 +24,8 @@ import SkillManagement from "./components/admin/SkillManagement";
 import StatsOverview from "./components/admin/StatsOverview";
 import DataAnalysis from "./components/admin/DataAnalysis";
 import ActiveMeetings from "./components/admin/ActiveMeetings";
+import SessionManagement from "./components/admin/SessionManagement";
+import ContractManagement from "./components/admin/ContractManagement";
 import UserDetailPage from "./pages/UserDetailPage";
 import { SocketProvider } from "./contexts/SocketContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -85,6 +87,8 @@ export default function App() {
             <Route path="stats" element={<StatsOverview />} />
             <Route path="data-analysis" element={<DataAnalysis />} />
             <Route path="meetings" element={<ActiveMeetings />} />
+            <Route path="sessions" element={<SessionManagement />} />
+            <Route path="contracts" element={<ContractManagement />} />
           </Route>
         </Routes>
       </Router>

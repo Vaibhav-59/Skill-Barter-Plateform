@@ -493,3 +493,45 @@ exports.getActiveMeetings = async (req, res, next) => {
     res.status(500).json({ success: false, message: "Server error fetching meetings" });
   }
 };
+
+// @desc    Get all sessions
+// @route   GET /api/admin/sessions
+// @access  Private/Admin
+exports.getAllSessions = async (req, res, next) => {
+  try {
+    const Session = require("../models/Session");
+    const sessions = await Session.find({})
+      .populate("hostUser", "name email avatar")
+      .populate("participantUser", "name email avatar")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: sessions
+    });
+  } catch (error) {
+    console.error("getAllSessions error:", error);
+    res.status(500).json({ success: false, message: "Server error fetching sessions" });
+  }
+};
+
+// @desc    Get all contracts
+// @route   GET /api/admin/contracts
+// @access  Private/Admin
+exports.getAllContracts = async (req, res, next) => {
+  try {
+    const SkillContract = require("../models/SkillContract");
+    const contracts = await SkillContract.find({})
+      .populate("userA", "name email avatar")
+      .populate("userB", "name email avatar")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: contracts
+    });
+  } catch (error) {
+    console.error("getAllContracts error:", error);
+    res.status(500).json({ success: false, message: "Server error fetching contracts" });
+  }
+};
