@@ -16,6 +16,14 @@ export const showError = (msg) => {
   });
 };
 
+export const showInfo = (msg, options = {}) => {
+  toast.info(msg, {
+    position: "top-right",
+    autoClose: 5000,
+    ...options,
+  });
+};
+
 export const showConfirm = (msg) => {
   return new Promise((resolve) => {
     const result = window.confirm(msg);

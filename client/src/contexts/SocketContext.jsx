@@ -43,6 +43,22 @@ export const SocketProvider = ({ children }) => {
         });
       });
 
+      // Handle general notifications (like match status changed, etc.)
+      socket.on("notificationReceived", (notification) => {
+        // dynamic import so we don't cause circular dependency issues or initialization bugs if it's imported at the top
+        import("../utils/toast").then(({ showInfo }) => {
+          showInfo(notification.content, { 
+            onClick: () => {
+              // optional: could redirect to notifications page or match page
+              if (notification.type === 'match_request' || notification.type === 'system') {
+                 // The user would likely navigate to /matches or /notifications
+                 window.location.href = '/notifications';
+              }
+            }
+          });
+        });
+      });
+
       // Cleanup on unmount
       return () => {
         socketService.disconnect();

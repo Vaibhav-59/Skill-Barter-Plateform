@@ -554,13 +554,18 @@ exports.requestMatch = async (req, res, next) => {
       .populate("receiver", "name email avatar");
 
     // Tell the receiver they got a Match Request!
-    await Notification.create({
+    const savedNotif = await Notification.create({
       recipient: receiverId,
       type: "match_request",
       content: `${req.user.name} sent you a match request to teach ${skillsInvolved[1]} and learn ${skillsInvolved[0]}!`,
       relatedId: match._id,
       relatedModel: "Match"
     });
+
+    const io = req.app.get("io");
+    if (io && io.sendNotificationToUser) {
+      io.sendNotificationToUser(receiverId.toString(), savedNotif);
+    }
 
     res.status(201).json({
       success: true,
@@ -609,13 +614,17 @@ exports.respondToMatch = async (req, res, next) => {
 
     // Tell the requester that their match was accepted!
     if (status === "accepted") {
-      await Notification.create({
+      const savedNotif = await Notification.create({
         recipient: match.requester._id,
         type: "system",
         content: `${req.user.name} accepted your match request! You can now send them a message.`,
         relatedId: match._id,
         relatedModel: "Match"
       });
+      const io = req.app.get("io");
+      if (io && io.sendNotificationToUser) {
+        io.sendNotificationToUser(match.requester._id.toString(), savedNotif);
+      }
     }
 
     res.status(200).json({
@@ -647,7 +656,7 @@ exports.getMyMatches = async (req, res, next) => {
       query.status = status;
     }
 
-    console.log("Match query:", query);
+    // console.log("Match query:", query);
 
     // Use correct field names for population
     const matches = await Match.find(query)

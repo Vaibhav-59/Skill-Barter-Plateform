@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import HomePage from "./pages/HomePage";
 import AuthPage from "./pages/AuthPage";
@@ -11,6 +13,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import SkillsPage from "./pages/SkillsPage";
 import MatchesPage from "./pages/MatchesPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import ChatPage from "./pages/ChatPage";
 import ReviewsPage from "./pages/ReviewsPage";
 import ReviewPage from "./pages/ReviewPage";
@@ -29,6 +32,8 @@ import GlobalCallNotification from "./components/GlobalCallNotification";
 import MeetingPage from "./pages/MeetingPage";
 import MeetingRoom from "./pages/MeetingRoom";
 import SkillMentor from "./components/SkillMentor";
+import SessionScheduler from "./pages/SessionScheduler";
+import SessionReminder from "./components/session/SessionReminder";
 
 export default function App() {
   return (
@@ -37,6 +42,8 @@ export default function App() {
         <Router>
         <GlobalCallNotification />
         <SkillMentor />
+        <SessionReminder />
+        <ToastContainer theme="dark" position="top-right" autoClose={5000} />
         <Routes>
           {/* Public Routes */}
           <Route index element={<HomePage />} />
@@ -51,6 +58,7 @@ export default function App() {
             <Route path="profile" element={<ProfilePage />} />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="matches" element={<MatchesPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
             <Route path="chat" element={<ChatPage />} />
             <Route path="/chat/:userId" element={<ChatPage />} />
             <Route path="chat/match/:matchId" element={<ChatPage />} />
@@ -59,6 +67,7 @@ export default function App() {
             <Route path="user/:id" element={<UserDetailPage />} />
             <Route path="user/:userId/reviews" element={<UserReviewsPage />} />
             <Route path="meeting" element={<MeetingPage />} />
+            <Route path="sessions" element={<SessionScheduler />} />
           </Route>
 
           {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}

@@ -10,6 +10,7 @@ const connectDB = require("./config/db");
 const socketController = require("./sockets/socketController");
 const errorHandler = require("./middleware/error");
 const { checkInactiveUsers } = require("./utils/inactiveUserHandler");
+const startCronJobs = require("./utils/cronScheduler");
 
 dotenv.config();
 // Load env vars
@@ -77,6 +78,7 @@ app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/schedules", require("./routes/schedules"));
 app.use("/api/progress", require("./routes/progress"));
 app.use("/api/mentor", require("./routes/mentor"));
+app.use("/api/sessions", require("./routes/sessionRoutes"));
 
 
 // Test route
@@ -96,6 +98,9 @@ server.listen(PORT, () => {
     `🚀 Hello, Future Billionaire! Your server is running on port ${PORT}`
   );
   console.log(`📱 Socket.IO server ready for connections`);
+  
+  // Start cron jobs
+  startCronJobs(app);
   
   // Run inactive user check every day at midnight
   setInterval(() => {
