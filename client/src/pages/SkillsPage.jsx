@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import { showSuccess, showError } from "../utils/toast";
 import SkillList from "../components/profile/SkillList";
@@ -8,6 +9,7 @@ import { updateProfile } from "../redux/slices/userSlice";
 
 export default function SkillsPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isDarkMode, bgClass, textClass, borderClass, cardClass, inputClass } = useTheme();
   const [teachSkill, setTeachSkill] = useState("");
   const [teachLevel, setTeachLevel] = useState("Beginner");
@@ -50,7 +52,7 @@ export default function SkillsPage() {
 
   const removeSkill = async (name) => {
     try {
-      await api.delete(`/skills/teach/${name}`);
+      await api.delete(`/skills/teach?name=${encodeURIComponent(name)}`);
       showSuccess("Skill removed");
       const updated = skills.filter((s) => s.name !== name);
       setSkills(updated);
@@ -82,7 +84,7 @@ export default function SkillsPage() {
 
   const removeLearnSkill = async (name) => {
     try {
-      await api.delete(`/skills/learn/${name}`);
+      await api.delete(`/skills/learn?name=${encodeURIComponent(name)}`);
       showSuccess("Learn skill removed");
       const updated = learnSkills.filter((s) => s.name !== name);
       setLearnSkills(updated);
@@ -111,10 +113,9 @@ export default function SkillsPage() {
             className="absolute w-2 h-2 rounded-full animate-ping opacity-30"
             style={{
               background: `linear-gradient(45deg, 
-                ${
-                  i % 3 === 0
-                    ? "rgba(52, 211, 153, 0.4)"
-                    : i % 3 === 1
+                ${i % 3 === 0
+                  ? "rgba(52, 211, 153, 0.4)"
+                  : i % 3 === 1
                     ? "rgba(34, 197, 94, 0.4)"
                     : "rgba(20, 184, 166, 0.4)"
                 }
@@ -142,7 +143,7 @@ export default function SkillsPage() {
 
       <div className="relative z-10 p-5 lg:p-6">
         <div className="max-w-6xl mx-auto">
-<br /> 
+          <br />
           {/* Skills Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Teaching Skills Section */}
@@ -456,6 +457,92 @@ export default function SkillsPage() {
                 {skills.length + learnSkills.length}
               </div>
               <div className="text-slate-400 font-medium">Total Skills</div>
+            </div>
+          </div>
+
+          {/* ━━━ Explore Skills & Experts Section ━━━ */}
+          <div className="mt-12">
+            <div className={`relative overflow-hidden rounded-3xl border shadow-2xl ${isDarkMode
+                ? "bg-gray-900/50 backdrop-blur-xl border-violet-500/20"
+                : "bg-white/80 backdrop-blur-xl border-violet-200 shadow-violet-500/5"
+              }`}>
+              {/* Gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-indigo-500/10 pointer-events-none" />
+              <div className={`absolute -top-20 -right-20 w-64 h-64 rounded-full blur-3xl pointer-events-none ${isDarkMode ? "bg-violet-500/10" : "bg-violet-400/10"}`} />
+              <div className={`absolute -bottom-20 -left-20 w-64 h-64 rounded-full blur-3xl pointer-events-none ${isDarkMode ? "bg-indigo-500/8" : "bg-indigo-400/8"}`} />
+
+              <div className="relative z-10 p-8 lg:p-10">
+                <div className="flex flex-col lg:flex-row items-center gap-8">
+                  {/* Left: text + features */}
+                  <div className="flex-1 text-center lg:text-left">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-500/15 border border-violet-500/30 rounded-full text-violet-400 text-sm font-semibold mb-4">
+                      <span>🌟</span> Featured Section
+                    </div>
+                    <h2 className={`text-3xl lg:text-4xl font-black mb-3 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                      Explore Skills &{" "}
+                      <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-500 bg-clip-text text-transparent">
+                        Find Experts
+                      </span>
+                    </h2>
+                    <p className={`text-lg mb-6 max-w-lg mx-auto lg:mx-0 ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
+                      Discover all skills available on the platform and connect with verified experts who can teach them
+                    </p>
+
+                    {/* Feature bullets */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                      {[
+                        { icon: "🔍", text: "Search any skill" },
+                        { icon: "👨‍🏫", text: "Browse expert profiles" },
+                        { icon: "⭐", text: "See ratings & reviews" },
+                        { icon: "🤝", text: "Send match requests" },
+                      ].map((f) => (
+                        <div key={f.text} className={`flex items-center gap-3 p-3 rounded-xl border text-sm font-medium ${isDarkMode
+                            ? "bg-gray-800/50 border-gray-700/40 text-slate-300"
+                            : "bg-violet-50/50 border-violet-100 text-slate-700"
+                          }`}>
+                          <span className="text-lg">{f.icon}</span>
+                          {f.text}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      id="btn-explore-skills"
+                      onClick={() => navigate("/skills/explore")}
+                      className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white font-bold text-lg rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-violet-500/30"
+                    >
+                      <span>🚀</span>
+                      Explore Skills & Experts
+                      <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Right: decorative skill grid preview */}
+                  <div className="hidden lg:grid grid-cols-2 gap-3 w-64 flex-shrink-0">
+                    {[
+                      { icon: "⚡", name: "JavaScript", experts: 5, color: "from-yellow-400 to-orange-500" },
+                      { icon: "🐍", name: "Python", experts: 8, color: "from-blue-400 to-cyan-500" },
+                      { icon: "⚛️", name: "React", experts: 6, color: "from-cyan-400 to-blue-500" },
+                      { icon: "🎨", name: "UI/UX Design", experts: 3, color: "from-pink-400 to-rose-500" },
+                    ].map((sk) => (
+                      <div
+                        key={sk.name}
+                        className={`p-4 rounded-2xl border text-center transition-all duration-300 hover:scale-105 cursor-pointer ${isDarkMode ? "bg-gray-800/60 border-gray-700/50 hover:border-violet-500/30" : "bg-white border-gray-200 hover:border-violet-300 shadow-md"
+                          }`}
+                        onClick={() => navigate("/skills/explore")}
+                      >
+                        <div className={`w-10 h-10 mx-auto mb-2 rounded-xl bg-gradient-to-br ${sk.color} flex items-center justify-center text-xl shadow-lg`}>
+                          {sk.icon}
+                        </div>
+                        <p className={`text-xs font-bold mb-1 ${isDarkMode ? "text-white" : "text-slate-800"}`}>{sk.name}</p>
+                        <p className={`text-[10px] ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>{sk.experts} experts</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

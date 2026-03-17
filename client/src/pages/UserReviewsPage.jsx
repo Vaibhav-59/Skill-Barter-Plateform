@@ -143,22 +143,30 @@ export default function UserReviewsPage() {
            <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-br from-emerald-400/10 to-teal-500/5 rounded-full blur-xl"></div>
            <div className="absolute bottom-4 left-4 w-12 h-12 bg-gradient-to-tr from-green-400/8 to-emerald-500/4 rounded-full blur-lg"></div>
 
-           <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 relative z-10">
-             <div className="relative group">
-               <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center text-slate-950 text-3xl font-bold relative overflow-hidden group-hover:scale-105 transition-all duration-500">
-                 <div className="absolute inset-0 bg-gradient-to-r from-black/0 via-black/20 to-black/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                 <span className="relative z-10 drop-shadow-lg">
-                   {user.name?.charAt(0)?.toUpperCase() || "U"}
-                 </span>
-                 
-                 {/* Animated rings */}
-                 <div className="absolute inset-0 rounded-2xl border-2 border-black/8 animate-spin" style={{animationDuration: '10s'}}></div>
-                 <div className="absolute inset-2 rounded-2xl border border-black/5 animate-spin" style={{animationDuration: '15s', animationDirection: 'reverse'}}></div>
-               </div>
-               
-               {/* Enhanced glow effect */}
-               <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400/20 via-green-500/20 to-teal-600/20 blur-xl -z-10 animate-pulse"></div>
-             </div>
+<div className="flex flex-col lg:flex-row items-center lg:items-start gap-6 relative z-10">
+              <div className="relative group">
+                <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center text-slate-950 text-3xl font-bold relative overflow-hidden group-hover:scale-105 transition-all duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/0 via-black/20 to-black/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  {user.profileImage ? (
+                    <img 
+                      src={user.profileImage} 
+                      alt={user.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="relative z-10 drop-shadow-lg">
+                      {user.name?.charAt(0)?.toUpperCase() || "U"}
+                    </span>
+                  )}
+                  
+                  {/* Animated rings */}
+                  <div className="absolute inset-0 rounded-2xl border-2 border-black/8 animate-spin" style={{animationDuration: '10s'}}></div>
+                  <div className="absolute inset-2 rounded-2xl border border-black/5 animate-spin" style={{animationDuration: '15s', animationDirection: 'reverse'}}></div>
+                </div>
+                
+                {/* Enhanced glow effect */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-emerald-400/20 via-green-500/20 to-teal-600/20 blur-xl -z-10 animate-pulse"></div>
+              </div>
 
              <div className="flex-1 text-center lg:text-left">
                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-slate-50 via-slate-200 to-slate-300 bg-clip-text text-transparent mb-3 leading-tight">

@@ -20,16 +20,30 @@ exports.getProfile = async (req, res, next) => {
 // Update user profile
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, bio, teachSkills, learnSkills, availability, location, role, experienceLevel } =
+    const { name, bio, teachSkills, learnSkills, availability, location, role, experienceLevel, learningStyle, teachingStyle, linkedinUrl, twitterUrl, githubUrl, portfolioUrl, languages, yearsOfExperience, removeVideo } =
       req.body;
 
-    console.log("Files received:", req.files ? req.files.length : 0);
+    const files = req.files || {};
+    const skillCertificateFiles = files.skillCertificates || [];
+    const profileImageFiles = files.profileImage || [];
+    const videoFiles = files.skillShowcaseVideo || [];
+
+    console.log("Files received - Certificates:", skillCertificateFiles.length, "Profile Image:", profileImageFiles.length);
     console.log("Body:", req.body);
 
     // location can arrive as a JSON string (multipart) or as an object
     let parsedLocation = location;
     if (typeof location === "string") {
       try { parsedLocation = JSON.parse(location); } catch { parsedLocation = { city: location, country: "" }; }
+    }
+
+    let parsedLanguages = languages;
+    if (typeof languages === "string") {
+      try { parsedLanguages = JSON.parse(languages); } catch { parsedLanguages = languages.split(",").map(lang => lang.trim()).filter(Boolean); }
+    } else if (!languages) {
+      parsedLanguages = [];
+    } else if (!Array.isArray(languages)) {
+      parsedLanguages = [languages];
     }
 
     const updateData = {
@@ -40,10 +54,47 @@ exports.updateProfile = async (req, res, next) => {
       availability: Array.isArray(availability) ? availability : (availability ? [availability] : []),
       location: parsedLocation || {},
       experienceLevel: experienceLevel || "",
+      learningStyle: learningStyle || "",
+      teachingStyle: teachingStyle || "",
+      linkedinUrl: linkedinUrl || "",
+      twitterUrl: twitterUrl || "",
+      githubUrl: githubUrl || "",
+      portfolioUrl: portfolioUrl || "",
+      languages: parsedLanguages,
+      yearsOfExperience: Number(yearsOfExperience) || 0,
     };
 
     if (role) {
       updateData.role = role;
+    }
+
+    // ── Handle Profile Image upload ──────────────────────────────────────
+    if (profileImageFiles.length > 0) {
+      try {
+        const file = profileImageFiles[0];
+        const result = await cloudinaryUploadCertificate(
+          file.buffer,
+          file.originalname,
+          file.mimetype
+        );
+        updateData.profileImage = result.secure_url;
+        console.log("✅ Uploaded profile image:", result.secure_url);
+        
+        // Delete old profile image if it exists
+        const existingUser = await User.findById(req.user._id);
+        if (existingUser.profileImage) {
+          try {
+            const oldPublicId = extractPublicId(existingUser.profileImage);
+            if (oldPublicId) {
+              await cloudinaryDelete(oldPublicId);
+            }
+          } catch (delErr) {
+            console.error("Error deleting old profile image:", delErr);
+          }
+        }
+      } catch (uploadError) {
+        console.error("❌ Error uploading profile image to Cloudinary:", uploadError);
+      }
     }
 
     // ── Handle certificate uploads ──────────────────────────────────────
@@ -51,11 +102,11 @@ exports.updateProfile = async (req, res, next) => {
     const existingUser = await User.findById(req.user._id);
     const existingCerts = existingUser?.certificates || [];
 
-    if (req.files && req.files.length > 0) {
+    if (skillCertificateFiles.length > 0) {
       const newCerts = [];
-      console.log("Uploading", req.files.length, "certificate files");
+      console.log("Uploading", skillCertificateFiles.length, "certificate files");
 
-      for (const file of req.files) {
+      for (const file of skillCertificateFiles) {
         try {
           // Determine file type for the certificate object
           let fileType = "document";
@@ -65,7 +116,7 @@ exports.updateProfile = async (req, res, next) => {
             fileType = "pdf";
           }
 
-          // Upload using buffer (memoryStorage) — NOT file.path!
+          // Upload using buffer
           const result = await cloudinaryUploadCertificate(
             file.buffer,
             file.originalname,
@@ -108,6 +159,34 @@ exports.updateProfile = async (req, res, next) => {
       }
     }
 
+    // ── Handle Video showcase upload ──────────────────────────────────────
+    if (removeVideo === "true") {
+      if (existingUser.skillShowcaseVideo) {
+        try {
+          const oldPublicId = extractPublicId(existingUser.skillShowcaseVideo);
+          if (oldPublicId) { await cloudinaryDelete(oldPublicId, "video"); }
+        } catch (err) { console.error("Error deleting old video", err); }
+      }
+      updateData.skillShowcaseVideo = "";
+    } else if (videoFiles.length > 0) {
+      try {
+        const file = videoFiles[0];
+        const { cloudinaryUpload } = require("../middleware/upload");
+        const result = await cloudinaryUpload(file.buffer, { folder: "SkillBarter/videos", resource_type: "video" });
+        updateData.skillShowcaseVideo = result.secure_url;
+        console.log("✅ Uploaded video showcase:", result.secure_url);
+
+        if (existingUser.skillShowcaseVideo) {
+          try {
+            const oldPublicId = extractPublicId(existingUser.skillShowcaseVideo);
+            if (oldPublicId) { await cloudinaryDelete(oldPublicId, "video"); }
+          } catch (delErr) { console.error("Error deleting old video:", delErr); }
+        }
+      } catch (uploadError) {
+        console.error("❌ Error uploading video to Cloudinary:", uploadError);
+      }
+    }
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
       updateData,
@@ -122,11 +201,36 @@ exports.updateProfile = async (req, res, next) => {
   }
 };
 
+// Delete user profile image
+exports.deleteProfileImage = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+    
+    if (user.profileImage) {
+      try {
+        const oldPublicId = extractPublicId(user.profileImage);
+        if (oldPublicId) {
+          await cloudinaryDelete(oldPublicId);
+        }
+      } catch (delErr) {
+        console.error("Error deleting profile image from Cloudinary:", delErr);
+      }
+      
+      user.profileImage = undefined;
+      await user.save();
+    }
+    
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
 // Get all users for discovery
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find({ _id: { $ne: req.user._id } })
-      .select("name bio teachSkills learnSkills location role experienceLevel availability skillCertificates certificates")
+      .select("name bio teachSkills learnSkills location role experienceLevel availability skillCertificates certificates profileImage")
       .limit(50);
 
     res.json(users);

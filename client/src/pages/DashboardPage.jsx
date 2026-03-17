@@ -301,10 +301,20 @@ export default function DashboardPage() {
                       <div className="relative">
                         <div className="w-28 h-28 bg-gradient-to-br from-emerald-400/90 via-green-500/90 to-teal-600/90 rounded-full flex items-center justify-center text-white text-3xl font-bold relative overflow-hidden group-hover:scale-110 transition-transform duration-300">
                           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                          <span className="relative z-10">
-                            {user.name?.charAt(0)?.toUpperCase() || "U"}
-                          </span>
+                          {user.profileImage ? (
+                            <img 
+                              src={user.profileImage} 
+                              alt={user.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="relative z-10">
+                              {user.name?.charAt(0)?.toUpperCase() || "U"}
+                            </span>
+                          )}
                         </div>
+                        {/* Online indicator */}
+                        <div className="absolute bottom-2 right-2 w-4 h-4 bg-emerald-400 rounded-full border-2 border-gray-950"></div>
                         {/* <div className="absolute -inset-3 bg-gradient-to-r from-emerald-400/20 via-green-500/20 to-teal-600/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div> */}
                       </div>
                     </div>

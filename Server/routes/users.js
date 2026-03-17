@@ -12,6 +12,7 @@ const {
   getAllUsers,
   getDashboardStats,
   getUserById,
+  deleteProfileImage,
 } = require("../controllers/userController");
 
 const router = express.Router();
@@ -33,7 +34,11 @@ router.put(
   "/profile",
   [
     protect,
-    upload.array("skillCertificates", 10),
+    upload.fields([
+      { name: "skillCertificates", maxCount: 10 },
+      { name: "profileImage", maxCount: 1 },
+      { name: "skillShowcaseVideo", maxCount: 1 }
+    ]),
     body("name").optional().isString(),
     body("bio").optional().isString(),
     body("location").optional().isString(),
@@ -43,6 +48,9 @@ router.put(
   ],
   updateProfile
 );
+
+// Delete Profile Image
+router.delete("/profile-image", protect, deleteProfileImage);
 
 // Get all users for discovery
 router.get("/discover", protect, getAllUsers);

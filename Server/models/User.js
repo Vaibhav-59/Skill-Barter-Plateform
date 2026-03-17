@@ -101,6 +101,36 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    profileImage: {
+      type: String,
+      default: "",
+    },
+    skillShowcaseVideo: {
+      type: String,
+      default: "",
+    },
+    learningStyle: {
+      type: String,
+      enum: ["Visual", "Auditory", "Reading/Writing", "Hands-on", "Interactive", ""],
+      default: "",
+    },
+    teachingStyle: {
+      type: String,
+      enum: ["Hands-on", "Lecture-based", "Project-based", "Step-by-step guidance", "Discussion-based", ""],
+      default: "",
+    },
+    linkedinUrl: { type: String, default: "" },
+    twitterUrl: { type: String, default: "" },
+    githubUrl: { type: String, default: "" },
+    portfolioUrl: { type: String, default: "" },
+    languages: {
+      type: [String],
+      default: [],
+    },
+    yearsOfExperience: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

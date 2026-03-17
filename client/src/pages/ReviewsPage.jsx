@@ -289,10 +289,10 @@ export default function ReviewsPage() {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/0 via-green-500/5 to-teal-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
               
-              <div className="relative w-12 h-12 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                {review.reviewer?.avatar ? (
+              <div className="relative w-12 h-12 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                {review.reviewer?.profileImage || review.reviewer?.avatar ? (
                   <img
-                    src={review.reviewer.avatar}
+                    src={review.reviewer.profileImage || review.reviewer.avatar}
                     alt={review.reviewer.name}
                     className="w-12 h-12 rounded-2xl object-cover"
                   />
@@ -397,9 +397,9 @@ export default function ReviewsPage() {
                     <div className="relative flex items-start justify-between">
                       <div className="flex items-start gap-4 flex-1">
                         <div className="w-14 h-14 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                          {review.reviewee?.avatar ? (
+                          {review.reviewee?.profileImage || review.reviewee?.avatar ? (
                             <img
-                              src={review.reviewee.avatar}
+                              src={review.reviewee.profileImage || review.reviewee.avatar}
                               alt={review.reviewee.name}
                               className="w-14 h-14 rounded-2xl object-cover"
                             />
@@ -562,9 +562,9 @@ export default function ReviewsPage() {
                           onClick={() => handleUserSelect(match)}
                           className="w-full flex items-center gap-4 p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 hover:border-emerald-400/50 rounded-xl transition-all duration-200 text-left"
                         >
-                          <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0">
-                            {otherUser?.avatar ? (
-                              <img src={otherUser.avatar} alt={otherUser.name} className="w-12 h-12 rounded-full object-cover" />
+                          <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {otherUser?.profileImage || otherUser?.avatar ? (
+                              <img src={otherUser.profileImage || otherUser.avatar} alt={otherUser.name} className="w-12 h-12 rounded-full object-cover" />
                             ) : (
                               <span className="text-white font-bold text-lg">
                                 {otherUser?.name?.charAt(0)?.toUpperCase() || "?"}
@@ -598,10 +598,14 @@ export default function ReviewsPage() {
             ) : (
               <>
                 <div className="flex items-center gap-4 p-4 bg-slate-800/50 border border-slate-700 rounded-xl">
-                  <div className="w-14 h-14 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">
-                      {selectedUser.name?.charAt(0)?.toUpperCase() || "?"}
-                    </span>
+                  <div className="w-14 h-14 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full flex items-center justify-center overflow-hidden">
+                    {selectedUser.profileImage ? (
+                      <img src={selectedUser.profileImage} alt={selectedUser.name} className="w-14 h-14 rounded-full object-cover" />
+                    ) : (
+                      <span className="text-white font-bold text-xl">
+                        {selectedUser.name?.charAt(0)?.toUpperCase() || "?"}
+                      </span>
+                    )}
                   </div>
                   <div className="flex-1">
                     <h4 className="font-bold text-white text-lg">{selectedUser.name}</h4>

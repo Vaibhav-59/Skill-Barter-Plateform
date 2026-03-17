@@ -619,14 +619,22 @@ export default function ChatPage() {
                       <div className="relative flex items-center gap-4">
                         <div className="relative">
                           <div
-                            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold ${
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold overflow-hidden ${
                               isSelected
                                 ? "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 text-white shadow-emerald-500/20"
                                 : "bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 text-white"
                             }`}
                           >
-                            {otherParticipant?.name?.charAt(0)?.toUpperCase() ||
-                              "U"}
+                            {otherParticipant?.profileImage ? (
+                              <img 
+                                src={otherParticipant.profileImage} 
+                                alt={otherParticipant.name} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              otherParticipant?.name?.charAt(0)?.toUpperCase() ||
+                              "U"
+                            )}
                           </div>
                           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-gray-950 animate-pulse shadow-md shadow-emerald-400/40"></div>
                         </div>
@@ -688,11 +696,23 @@ export default function ChatPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      <div className="w-14 h-14 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg">
+                      <div className="w-14 h-14 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                         {selectedConversation.participants
                           .find((p) => p._id !== userId)
+                          ?.profileImage ? (
+                          <img 
+                            src={selectedConversation.participants
+                              .find((p) => p._id !== userId)
+                              ?.profileImage} 
+                            alt="Profile" 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          selectedConversation.participants
+                          .find((p) => p._id !== userId)
                           ?.name?.charAt(0)
-                          ?.toUpperCase() || "U"}
+                          ?.toUpperCase() || "U"
+                        )}
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-gray-950 animate-pulse shadow-md shadow-emerald-400/40"></div>
                     </div>
@@ -779,10 +799,18 @@ export default function ChatPage() {
                             }`}
                           >
                             {!isOwnMessage && (
-                              <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
-                                {message.sender?.name
+                              <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg overflow-hidden">
+                                {message.sender?.profileImage ? (
+                                  <img 
+                                    src={message.sender.profileImage} 
+                                    alt="Profile" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  message.sender?.name
                                   ?.charAt(0)
-                                  ?.toUpperCase() || "U"}
+                                  ?.toUpperCase() || "U"
+                                )}
                               </div>
                             )}
 

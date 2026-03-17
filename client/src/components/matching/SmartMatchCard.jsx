@@ -167,6 +167,7 @@ const SmartMatchCard = ({
             <div className="relative">
               <img
                 src={
+                  user.profileImage ||
                   user.avatar ||
                   `https://ui-avatars.com/api/?name=${user.name}&background=10b981&color=fff`
                 }

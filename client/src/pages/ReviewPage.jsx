@@ -181,10 +181,18 @@ export default function ReviewPage() {
         <div className="bg-gradient-to-r from-slate-900/80 to-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 mb-6">
           <div className="text-center">
             <div className="relative inline-block mb-4">
-              <div className="w-28 h-28 bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/30">
-                <span className="text-5xl font-bold text-white">
-                  {otherUser.name?.charAt(0)?.toUpperCase() || "U"}
-                </span>
+              <div className="w-28 h-28 bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/30 overflow-hidden">
+                {otherUser.profileImage ? (
+                  <img 
+                    src={otherUser.profileImage} 
+                    alt={otherUser.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-5xl font-bold text-white">
+                    {otherUser.name?.charAt(0)?.toUpperCase() || "U"}
+                  </span>
+                )}
               </div>
               <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg">
                 <svg className="w-6 h-6 text-yellow-900" fill="currentColor" viewBox="0 0 20 20">

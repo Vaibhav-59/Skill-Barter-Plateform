@@ -63,8 +63,16 @@ export default function ContractList({ contracts, myId, onSelect, filterStatus }
                   </h3>
                 </div>
                 {/* Partner avatar */}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg">
-                  {partner.name?.[0]?.toUpperCase() || "?"}
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg overflow-hidden">
+                  {partner.profileImage ? (
+                    <img 
+                      src={partner.profileImage} 
+                      alt={partner.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    partner.name?.[0]?.toUpperCase() || "?"
+                  )}
                 </div>
               </div>
 

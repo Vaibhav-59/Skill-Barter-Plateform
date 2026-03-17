@@ -1,9 +1,9 @@
 // client/src/pages/ProfilePage.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import api, { BASE_URL } from "../utils/api";
 import { showSuccess, showError } from "../utils/toast";
-import { loginUser } from "../redux/slices/authSlice";
+import { loginUser, updateUser } from "../redux/slices/authSlice";
 import { setProfile, updateProfile } from "../redux/slices/userSlice";
 import { fetchReviewStatsAsync } from "../redux/slices/reviewSlice";
 import { fetchSmartMatches } from "../redux/slices/smartMatchSlice";
@@ -31,7 +31,19 @@ export default function ProfilePage() {
     skillCertificates: [],
     certificates: [],
     certificatePreviews: [],
+    skillShowcaseVideo: "",
+    learningStyle: "",
+    teachingStyle: "",
+    linkedinUrl: "",
+    twitterUrl: "",
+    githubUrl: "",
+    portfolioUrl: "",
+    languages: [],
+    yearsOfExperience: 0,
   });
+
+  const [videoFile, setVideoFile] = useState(null);
+  const [removeVideo, setRemoveVideo] = useState(false);
 
   const [certificateFiles, setCertificateFiles] = useState([]);
   const [certificatePreviews, setCertificatePreviews] = useState([]);
@@ -45,10 +57,21 @@ export default function ProfilePage() {
     availability: [],
     skillCertificates: [],
     certificates: [],
+    skillShowcaseVideo: "",
+    learningStyle: "",
+    teachingStyle: "",
+    linkedinUrl: "",
+    twitterUrl: "",
+    githubUrl: "",
+    portfolioUrl: "",
+    languages: [],
+    yearsOfExperience: 0,
     createdAt: null,
   });
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showImageMenu, setShowImageMenu] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [dashboardStats, setDashboardStats] = useState({ matches: 0, completed: 0, receivedReviews: 0 });
 
   useEffect(() => {
@@ -77,6 +100,16 @@ export default function ProfilePage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [dispatch]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showImageMenu && !e.target.closest('.image-menu-container')) {
+        setShowImageMenu(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showImageMenu]);
  
   useEffect(() => {
     if (isEditing) {
@@ -100,9 +133,20 @@ export default function ProfilePage() {
       availability: profileData.availability || [],
       certificates: profileData.certificates || [],
       skillCertificates: profileData.skillCertificates || [],
+      skillShowcaseVideo: profileData.skillShowcaseVideo || "",
+      learningStyle: profileData.learningStyle || "",
+      teachingStyle: profileData.teachingStyle || "",
+      linkedinUrl: profileData.linkedinUrl || "",
+      twitterUrl: profileData.twitterUrl || "",
+      githubUrl: profileData.githubUrl || "",
+      portfolioUrl: profileData.portfolioUrl || "",
+      languages: profileData.languages || [],
+      yearsOfExperience: profileData.yearsOfExperience || 0,
     }));
     setCertificateFiles([]);
     setCertificatePreviews([]);
+    setVideoFile(null);
+    setRemoveVideo(false);
     setIsEditing(true);
   };
 
@@ -122,6 +166,15 @@ export default function ProfilePage() {
           availability: userData.availability || [],
           certificates: userData.certificates || [],
           skillCertificates: userData.skillCertificates || [],
+          skillShowcaseVideo: userData.skillShowcaseVideo || "",
+          learningStyle: userData.learningStyle || "",
+          teachingStyle: userData.teachingStyle || "",
+          linkedinUrl: userData.linkedinUrl || "",
+          twitterUrl: userData.twitterUrl || "",
+          githubUrl: userData.githubUrl || "",
+          portfolioUrl: userData.portfolioUrl || "",
+          languages: userData.languages || [],
+          yearsOfExperience: userData.yearsOfExperience || 0,
         });
 
         setProfileData({
@@ -134,6 +187,15 @@ export default function ProfilePage() {
           availability: userData.availability || [],
           certificates: userData.certificates || [],
           skillCertificates: userData.skillCertificates || [],
+          skillShowcaseVideo: userData.skillShowcaseVideo || "",
+          learningStyle: userData.learningStyle || "",
+          teachingStyle: userData.teachingStyle || "",
+          linkedinUrl: userData.linkedinUrl || "",
+          twitterUrl: userData.twitterUrl || "",
+          githubUrl: userData.githubUrl || "",
+          portfolioUrl: userData.portfolioUrl || "",
+          languages: userData.languages || [],
+          yearsOfExperience: userData.yearsOfExperience || 0,
           createdAt: userData.createdAt || null,
         });
 
@@ -159,6 +221,70 @@ export default function ProfilePage() {
     fetchUser();
   }, [dispatch]);
 
+  const handleProfileImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showError("Image size should be less than 5MB");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("profileImage", file);
+
+      // We use the same /profile endpoint which now handles profileImage field
+      const res = await api.put("/users/profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      
+      showSuccess("Profile picture updated");
+      dispatch(updateUser(res.data));
+      dispatch(updateProfile(res.data));
+      dispatch(setProfile(res.data));
+      
+      // Update local state if needed
+      setProfileData(prev => ({
+        ...prev,
+        profileImage: res.data.profileImage
+      }));
+      
+      // Close modal if open
+      setShowImageModal(false);
+    } catch (err) {
+      showError(err.response?.data?.message || "Failed to upload image");
+    } finally {
+      setLoading(false);
+      // Reset file inputs
+      const inputs = document.querySelectorAll('input[type="file"]');
+      inputs.forEach(input => input.value = '');
+    }
+  };
+
+  const handleRemoveProfileImage = async () => {
+    setLoading(true);
+    try {
+      const res = await api.delete("/users/profile-image");
+      showSuccess("Profile picture removed");
+      dispatch(updateUser(res.data));
+      dispatch(updateProfile(res.data));
+      dispatch(setProfile(res.data));
+      setProfileData(prev => ({
+        ...prev,
+        profileImage: res.data.profileImage
+      }));
+      setShowImageMenu(false);
+    } catch (err) {
+      showError(err.response?.data?.message || "Failed to remove image");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -170,13 +296,25 @@ export default function ProfilePage() {
       formData.append("location", JSON.stringify(form.location || {}));
       formData.append("role", form.role);
       formData.append("experienceLevel", form.experienceLevel || "");
-      // availability is an array — send each slot separately
+      formData.append("learningStyle", form.learningStyle || "");
+      formData.append("teachingStyle", form.teachingStyle || "");
+      formData.append("linkedinUrl", form.linkedinUrl || "");
+      formData.append("twitterUrl", form.twitterUrl || "");
+      formData.append("githubUrl", form.githubUrl || "");
+      formData.append("portfolioUrl", form.portfolioUrl || "");
+      formData.append("yearsOfExperience", form.yearsOfExperience || 0);
       (form.availability || []).forEach((slot) => formData.append("availability", slot));
+      (form.languages || []).forEach((lang) => formData.append("languages", lang));
       
       if (certificateFiles && certificateFiles.length > 0) {
         certificateFiles.forEach((file) => {
           formData.append("skillCertificates", file);
         });
+      }
+      if (videoFile) {
+        formData.append("skillShowcaseVideo", videoFile);
+      } else if (removeVideo) {
+        formData.append("removeVideo", "true");
       }
 
       const res = await api.put("/users/profile", formData, {
@@ -200,6 +338,15 @@ export default function ProfilePage() {
         availability: userData.availability || [],
         certificates: userData.certificates || [],
         skillCertificates: userData.skillCertificates || [],
+        skillShowcaseVideo: userData.skillShowcaseVideo || "",
+        learningStyle: userData.learningStyle || "",
+        teachingStyle: userData.teachingStyle || "",
+        linkedinUrl: userData.linkedinUrl || "",
+        twitterUrl: userData.twitterUrl || "",
+        githubUrl: userData.githubUrl || "",
+        portfolioUrl: userData.portfolioUrl || "",
+        languages: userData.languages || [],
+        yearsOfExperience: userData.yearsOfExperience || 0,
         createdAt: userData.createdAt || null,
       });
       
@@ -213,6 +360,15 @@ export default function ProfilePage() {
         availability: userData.availability || [],
         certificates: userData.certificates || [],
         skillCertificates: userData.skillCertificates || [],
+        skillShowcaseVideo: userData.skillShowcaseVideo || "",
+        learningStyle: userData.learningStyle || "",
+        teachingStyle: userData.teachingStyle || "",
+        linkedinUrl: userData.linkedinUrl || "",
+        twitterUrl: userData.twitterUrl || "",
+        githubUrl: userData.githubUrl || "",
+        portfolioUrl: userData.portfolioUrl || "",
+        languages: userData.languages || [],
+        yearsOfExperience: userData.yearsOfExperience || 0,
       });
       
       dispatch(updateProfile(userData));
@@ -221,6 +377,8 @@ export default function ProfilePage() {
       
       setCertificateFiles([]);
       setCertificatePreviews([]);
+      setVideoFile(null);
+      setRemoveVideo(false);
       setIsEditing(false);
       
       window.dispatchEvent(new Event('profileUpdated'));
@@ -290,7 +448,7 @@ export default function ProfilePage() {
       )
     }));
     try {
-      await api.patch(`/skills/${type}/${encodeURIComponent(skillName)}/level`, { level: newLevel });
+      await api.patch(`/skills/${type}/level?name=${encodeURIComponent(skillName)}`, { level: newLevel });
       showSuccess(`${skillName} updated to ${newLevel}`);
     } catch (err) {
       showError('Failed to update skill level');
@@ -347,7 +505,7 @@ export default function ProfilePage() {
   };
 
   // ── Profile Completion ── dynamically computed from actual fields
-  // Each filled field contributes equally; total = 7 checkpoints
+  // Each filled field contributes equally; total = 11 checkpoints
   const profileCompletion = (() => {
     const checkpoints = [
       !!(profileData.name || user?.name),                          // name
@@ -357,6 +515,10 @@ export default function ProfilePage() {
       effectiveTeachCount > 0,                                     // at least 1 teach skill
       effectiveLearnCount > 0,                                     // at least 1 learn skill
       (profileData.certificates?.length || profileData.skillCertificates?.length || 0) > 0,           // certificates
+      !!(profileData.skillShowcaseVideo || user?.skillShowcaseVideo), // video
+      !!(profileData.learningStyle || user?.learningStyle),        // learning style
+      !!(profileData.teachingStyle || user?.teachingStyle),        // teaching style
+      (profileData.languages?.length || user?.languages?.length || 0) > 0, // languages
     ];
     const filled = checkpoints.filter(Boolean).length;
     return Math.round((filled / checkpoints.length) * 100);
@@ -477,21 +639,107 @@ export default function ProfilePage() {
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-green-500/2 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
                 
                 <div className="text-center relative z-10">
-                  <div className="relative inline-block mb-5">
-                    <div className="w-28 h-28 bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 rounded-full flex items-center justify-center text-slate-950 text-4xl font-bold shadow-lg relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/0 via-black/15 to-black/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                      <span className="relative z-10">
-                        {profileData?.name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || "U"}
-                      </span>
+                  <div className="relative inline-block mb-5 image-menu-container">
+                    <div 
+                      className="w-28 h-28 bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 rounded-full flex items-center justify-center text-slate-950 text-4xl font-bold shadow-lg relative overflow-hidden group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                      onClick={() => setShowImageMenu(!showImageMenu)}
+                    >
+                      {user?.profileImage ? (
+                        <img 
+                          src={user.profileImage} 
+                          alt={user.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/0 via-black/15 to-black/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                          <span className="relative z-10">
+                            {profileData?.name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || "U"}
+                          </span>
+                        </>
+                      )}
                       {/* Animated Ring */}
                       <div className="absolute inset-0 rounded-full border-2 border-black/10 animate-spin" style={{animationDuration: '6s'}}></div>
                     </div>
                     
-                    {/* Enhanced Status Indicator */}
-                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full border-2 border-gray-800 flex items-center justify-center shadow-md shadow-emerald-500/30">
-                      <div className="w-3 h-3 bg-slate-900 rounded-full animate-pulse"></div>
-                      <div className="absolute inset-0 rounded-full bg-emerald-400/25 animate-ping"></div>
-                    </div>
+                    {/* Camera Icon Overlay / Button */}
+                    <label 
+                      htmlFor="profile-upload"
+                      className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-r from-emerald-400 to-green-500 rounded-full border-2 border-gray-800 flex items-center justify-center shadow-md shadow-emerald-500/30 cursor-pointer hover:scale-110 transition-transform duration-200 z-20 group/camera"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <svg className="w-4 h-4 text-slate-900 group-hover/camera:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <div className="absolute inset-0 rounded-full bg-emerald-400/25 animate-ping group-hover:animate-none"></div>
+                    </label>
+                    <input 
+                      id="profile-upload" 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleProfileImageChange}
+                    />
+
+                    {/* Image Options Dropdown Menu */}
+                    {showImageMenu && (
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-gray-800/95 backdrop-blur-xl rounded-xl border border-emerald-500/20 shadow-xl shadow-emerald-500/10 overflow-hidden z-50">
+                        <div className="py-1">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              document.getElementById('profile-upload-menu').click();
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-slate-200 hover:bg-emerald-500/10 hover:text-emerald-300 cursor-pointer transition-colors"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-sm font-medium">Upload New Photo</span>
+                          </button>
+                          <input 
+                            id="profile-upload-menu" 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleProfileImageChange}
+                          />
+                          
+                          {user?.profileImage && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowImageMenu(false);
+                                  setShowImageModal(true);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-slate-200 hover:bg-emerald-500/10 hover:text-emerald-300 transition-colors"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span className="text-sm font-medium">View & Adjust</span>
+                              </button>
+                              
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveProfileImage();
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span className="text-sm font-medium">Remove Photo</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="text-center relative z-10">
@@ -638,7 +886,9 @@ export default function ProfilePage() {
                     <span className="text-slate-200 font-medium">Member Since</span>
                     <span className="text-teal-400 font-semibold">{memberSince}</span>
                   </div>
-                  
+
+
+
                   {/* Certificates section — uses new structured format */}
                   {(() => {
                     // Gather certificates from both old and new format
@@ -737,6 +987,20 @@ export default function ProfilePage() {
                 </h3>
                 
                 <div className="space-y-4 relative z-10">
+                  {/* Showcase Video Section */}
+                  {user?.skillShowcaseVideo && (
+                    <div className="mb-6 rounded-2xl overflow-hidden border border-emerald-500/30 bg-black/40 group/video relative">
+                      <video 
+                        src={user.skillShowcaseVideo} 
+                        className="w-full aspect-video object-cover" 
+                        controls
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-1 bg-emerald-500/80 backdrop-blur-md rounded text-[10px] font-bold text-slate-900 uppercase">
+                        Showcase Video
+                      </div>
+                    </div>
+                  )}
+
                   {[
                     { icon: '🎯', bg: 'from-emerald-500/15 to-green-500/8', border: 'border-emerald-500/25', text: 'Profile updated', time: '2 hours ago', color: 'text-emerald-400' },
                     { icon: '📚', bg: 'from-green-500/15 to-teal-500/8', border: 'border-green-500/25', text: 'New skill added', time: '1 day ago', color: 'text-green-400' },
@@ -954,6 +1218,10 @@ export default function ProfilePage() {
                     setCertificatePreviews={setCertificatePreviews}
                     onDeleteCertificate={handleDeleteCertificate}
                     onRemoveCertificate={handleRemoveCertificateFromForm}
+                    videoFile={videoFile}
+                    setVideoFile={setVideoFile}
+                    removeVideo={removeVideo}
+                    setRemoveVideo={setRemoveVideo}
                   />
                 </div>
               </div>
@@ -984,6 +1252,80 @@ export default function ProfilePage() {
           animation: fadeInUp 0.6s ease-out forwards;
         }
       `}</style>
+
+      {/* Image View/Edit Modal */}
+      {showImageModal && user?.profileImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+          
+          {/* Modal Content */}
+          <div 
+            className="relative bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-emerald-500/20 shadow-2xl shadow-emerald-500/10 max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-800/50">
+              <h3 className="text-xl font-bold text-white">Profile Photo</h3>
+              <button 
+                onClick={() => setShowImageModal(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Image Container */}
+            <div className="p-6 flex justify-center">
+              <div className="relative w-80 h-80 rounded-2xl overflow-hidden border-2 border-emerald-500/30 shadow-lg">
+                <img 
+                  src={user.profileImage} 
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex items-center justify-center gap-4 p-6 border-t border-gray-800/50">
+              <label 
+                htmlFor="profile-upload-modal"
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 hover:from-emerald-500 hover:via-green-600 hover:to-teal-700 text-slate-950 font-semibold rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Change Photo</span>
+              </label>
+              <input 
+                id="profile-upload-modal" 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleProfileImageChange}
+              />
+              
+              <button
+                onClick={() => {
+                  setShowImageModal(false);
+                  handleRemoveProfileImage();
+                }}
+                className="flex items-center gap-2 px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold rounded-xl border border-red-500/30 transition-all duration-300"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span>Remove</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

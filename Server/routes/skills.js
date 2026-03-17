@@ -21,9 +21,9 @@ router.get("/", getSkills);
 // User-specific skills
 router.post("/teach", protect, addTeachSkill);
 router.post("/learn", protect, addLearnSkill);
-router.delete("/learn/:name", protect, removeLearnSkill);
-router.delete("/teach/:name", protect, removeTeachSkill);
-router.patch("/teach/:name/level", protect, updateTeachSkillLevel);
-router.patch("/learn/:name/level", protect, updateLearnSkillLevel);
+router.delete("/learn", protect, removeLearnSkill);
+router.delete("/teach", protect, removeTeachSkill);
+router.patch("/teach/level", protect, updateTeachSkillLevel);
+router.patch("/learn/level", protect, updateLearnSkillLevel);
 
 module.exports = router;

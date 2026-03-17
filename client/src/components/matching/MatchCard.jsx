@@ -130,11 +130,19 @@ export default function MatchCard({ match, currentUserId, onRespond }) {
       {/* Header Section */}
       <div className="relative z-10 flex items-center gap-6 mb-6">
         <div className="relative">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl transition-all duration-500 group-hover:scale-110">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 flex items-center justify-center text-white font-bold text-xl transition-all duration-500 group-hover:scale-110 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 rounded-2xl"></div>
-            <span className="relative z-10">
-              {otherUser.name?.charAt(0)?.toUpperCase() || "U"}
-            </span>
+            {otherUser.profileImage ? (
+              <img 
+                src={otherUser.profileImage} 
+                alt={otherUser.name} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="relative z-10">
+                {otherUser.name?.charAt(0)?.toUpperCase() || "U"}
+              </span>
+            )}
           </div>
           <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-gray-950"></div>
         </div>

@@ -37,6 +37,9 @@ import SkillMentor from "./components/SkillMentor";
 import SessionScheduler from "./pages/SessionScheduler";
 import SessionReminder from "./components/session/SessionReminder";
 import SmartContractPage from "./pages/SmartContractPage";
+import SkillsExperts from "./pages/SkillsExperts";
+import SkillExpertsList from "./pages/SkillExpertsList";
+import ExpertProfile from "./pages/ExpertProfile";
 
 export default function App() {
   return (
@@ -60,6 +63,9 @@ export default function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="skills" element={<SkillsPage />} />
+            <Route path="skills/explore" element={<SkillsExperts />} />
+            <Route path="skills/explore/:skillName" element={<SkillExpertsList />} />
+            <Route path="skills/explore/:skillName/expert/:expertId" element={<ExpertProfile />} />
             <Route path="matches" element={<MatchesPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="chat" element={<ChatPage />} />

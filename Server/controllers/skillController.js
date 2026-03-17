@@ -6,7 +6,7 @@ exports.addSkill = async (req, res, next) => {
   try {
     const { name, category, subcategory, description, type } = req.body;
     console.log('Creating skill with data:', { name, category, subcategory, description, type, createdBy: req.user._id });
-    
+
     const skill = await Skill.create({
       name,
       category,
@@ -15,10 +15,10 @@ exports.addSkill = async (req, res, next) => {
       type,
       createdBy: req.user._id,
     });
-    
+
     console.log('Skill created successfully:', skill);
     console.log('Saved to collection:', Skill.collection.collectionName);
-    
+
     res.status(201).json(skill);
   } catch (err) {
     console.error('Error creating skill:', err);
@@ -91,7 +91,7 @@ exports.addLearnSkill = async (req, res, next) => {
 // Remove from learnSkills
 exports.removeLearnSkill = async (req, res, next) => {
   try {
-    const { name } = req.params;
+    const name = req.query.name || req.body.name;
 
     req.user.learnSkills = req.user.learnSkills.filter((s) => s.name !== name);
     await req.user.save();
@@ -104,7 +104,7 @@ exports.removeLearnSkill = async (req, res, next) => {
 
 // Remove teach skill
 exports.removeTeachSkill = async (req, res, next) => {
-  const { name } = req.params;
+  const name = req.query.name || req.body.name;
   req.user.teachSkills = req.user.teachSkills.filter((s) => s.name !== name);
   await req.user.save();
   res.status(200).json({ teachSkills: req.user.teachSkills });
@@ -113,7 +113,7 @@ exports.removeTeachSkill = async (req, res, next) => {
 // Update teach skill level
 exports.updateTeachSkillLevel = async (req, res, next) => {
   try {
-    const { name } = req.params;
+    const name = req.query.name || req.body.name;
     const { level } = req.body;
     if (!level) return res.status(400).json({ message: "Level required" });
     const skill = req.user.teachSkills.find((s) => s.name === name);
@@ -129,7 +129,7 @@ exports.updateTeachSkillLevel = async (req, res, next) => {
 // Update learn skill level
 exports.updateLearnSkillLevel = async (req, res, next) => {
   try {
-    const { name } = req.params;
+    const name = req.query.name || req.body.name;
     const { level } = req.body;
     if (!level) return res.status(400).json({ message: "Level required" });
     const skill = req.user.learnSkills.find((s) => s.name === name);

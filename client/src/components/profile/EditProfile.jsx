@@ -57,12 +57,18 @@ export default function EditProfile({
   setCertificatePreviews,
   onDeleteCertificate,
   onRemoveCertificate,
+  videoFile,
+  setVideoFile,
+  removeVideo,
+  setRemoveVideo,
 }) {
   const fileInputRef = useRef(null);
+  const videoInputRef = useRef(null);
   const isDark = theme === "dark";
 
   const [existingCerts, setExistingCerts] = React.useState(form.certificates || form.skillCertificates || []);
   const [deletedCertIndices, setDeletedCertIndices] = React.useState([]);
+  const [langInput, setLangInput] = React.useState("");
 
   React.useEffect(() => {
     setExistingCerts(form.certificates || form.skillCertificates || []);
@@ -99,6 +105,38 @@ export default function EditProfile({
       });
     }
     e.target.value = "";
+  };
+
+  const handleVideoSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 105000000) return alert("Video should be around 100MB maximum");
+      setVideoFile(file);
+      setRemoveVideo(false);
+    }
+    e.target.value = "";
+  };
+
+  const handleRemoveVideo = () => {
+    setVideoFile(null);
+    setRemoveVideo(true);
+  };
+
+  const handleAddLanguage = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = langInput.trim();
+      if (val && !(form.languages || []).includes(val)) {
+        setForm({ ...form, languages: [...(form.languages || []), val] });
+      }
+      setLangInput("");
+    }
+  };
+
+  const removeLanguage = (idx) => {
+    const newLangs = [...(form.languages || [])];
+    newLangs.splice(idx, 1);
+    setForm({ ...form, languages: newLangs });
   };
 
   const handleDeleteFile = (index) => {
@@ -193,6 +231,101 @@ export default function EditProfile({
             onChange={(e) => setForm({ ...form, bio: e.target.value })}
             className={inputCls}
           />
+        </div>
+      </div>
+
+      {/* ── Expertise & Education ─────────────────────────────────────────────── */}
+      <div className={sectionCls}>
+        <h4 className="text-emerald-400 font-bold text-sm uppercase tracking-widest flex items-center gap-2">
+          <span>🎓</span> Expertise
+        </h4>
+
+        <div className="grid grid-cols-1 gap-3">
+          <div>
+            <label className={labelCls}>Learning Style</label>
+            <select
+              className={inputCls}
+              value={form.learningStyle || ""}
+              onChange={(e) => setForm({ ...form, learningStyle: e.target.value })}
+            >
+              <option value="">Select learning style...</option>
+              <option value="Visual">Visual</option>
+              <option value="Auditory">Auditory</option>
+              <option value="Reading/Writing">Reading/Writing</option>
+              <option value="Hands-on">Hands-on</option>
+              <option value="Interactive">Interactive</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>Teaching Style</label>
+            <select
+              className={inputCls}
+              value={form.teachingStyle || ""}
+              onChange={(e) => setForm({ ...form, teachingStyle: e.target.value })}
+            >
+              <option value="">Select teaching style...</option>
+              <option value="Hands-on">Hands-on</option>
+              <option value="Lecture-based">Lecture-based</option>
+              <option value="Project-based">Project-based</option>
+              <option value="Step-by-step guidance">Step-by-step guidance</option>
+              <option value="Discussion-based">Discussion-based</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+           <div>
+            <label className={labelCls}>Years of Experience</label>
+            <input
+              type="number" min="0" placeholder="e.g. 3"
+              className={inputCls} value={form.yearsOfExperience || ""}
+              onChange={(e) => setForm({ ...form, yearsOfExperience: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Languages Known</label>
+            <input
+              type="text" placeholder="Type and press Enter (e.g., English)"
+              className={inputCls} value={langInput}
+              onChange={(e) => setLangInput(e.target.value)}
+              onKeyDown={handleAddLanguage}
+            />
+            {form.languages?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {form.languages.map((lang, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-gray-700/60 rounded text-sm text-gray-200 flex items-center gap-1">
+                    {lang}
+                    <button type="button" onClick={() => removeLanguage(idx)} className="text-gray-400 hover:text-red-400">&times;</button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Social Media Links ────────────────────────────────────────────────── */}
+      <div className={sectionCls}>
+        <h4 className="text-emerald-400 font-bold text-sm uppercase tracking-widest flex items-center gap-2">
+          <span>🔗</span> Social Links
+        </h4>
+        <div className="space-y-3">
+          <div>
+            <label className={labelCls}>LinkedIn Profile</label>
+            <input type="url" placeholder="https://linkedin.com/in/username" className={inputCls} value={form.linkedinUrl || ""} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} />
+          </div>
+          <div>
+            <label className={labelCls}>Twitter / X</label>
+            <input type="url" placeholder="https://twitter.com/username" className={inputCls} value={form.twitterUrl || ""} onChange={(e) => setForm({ ...form, twitterUrl: e.target.value })} />
+          </div>
+          <div>
+            <label className={labelCls}>GitHub Profile</label>
+            <input type="url" placeholder="https://github.com/username" className={inputCls} value={form.githubUrl || ""} onChange={(e) => setForm({ ...form, githubUrl: e.target.value })} />
+          </div>
+          <div>
+            <label className={labelCls}>Portfolio Website</label>
+            <input type="url" placeholder="https://yourwebsite.com" className={inputCls} value={form.portfolioUrl || ""} onChange={(e) => setForm({ ...form, portfolioUrl: e.target.value })} />
+          </div>
         </div>
       </div>
 
@@ -377,6 +510,49 @@ export default function EditProfile({
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Skill Showcase Video ─────────────────────────────────────────────── */}
+      <div className={sectionCls}>
+        <h4 className="text-emerald-400 font-bold text-sm uppercase tracking-widest flex items-center gap-2">
+          <span>🎥</span> Skill Showcase Video
+        </h4>
+        <p className="text-gray-400 text-xs text-balance">Upload a short intro video (under 2 limits) showcasing your skills (mp4, mov, webm).</p>
+
+        <input
+          ref={videoInputRef} id="skillShowcaseVideo"
+          type="file" accept="video/mp4,video/quicktime,video/webm"
+          onChange={handleVideoSelect} className="hidden"
+        />
+
+        {!videoFile && (!form.skillShowcaseVideo || removeVideo) ? (
+          <button
+            type="button"
+            onClick={() => videoInputRef.current.click()}
+            className="w-full py-3 px-4 border-2 border-dashed border-emerald-500/40 hover:border-emerald-400/70 rounded-xl text-emerald-400 hover:text-emerald-300 bg-emerald-500/5 hover:bg-emerald-500/10 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Upload Showcase Video
+          </button>
+        ) : (
+          <div className="relative rounded-xl overflow-hidden border border-emerald-500/30 bg-gray-900/50">
+            <video
+              src={videoFile ? URL.createObjectURL(videoFile) : form.skillShowcaseVideo}
+              controls
+              className="w-full max-h-48 object-cover"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveVideo}
+              className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1.5 shadow-lg backdrop-blur-sm transition-all z-10"
+              title="Remove Video"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         )}
       </div>
