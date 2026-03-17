@@ -124,25 +124,6 @@ const links = [
     ),
   },
   {
-    path: "/reviews",
-    label: "Reviews",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-        />
-      </svg>
-    ),
-  },
-  {
     path: "/sessions",
     label: "Sessions",
     icon: (
@@ -167,6 +148,25 @@ const links = [
         viewBox="0 0 24 24"
       >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+  {
+    path: "/reviews",
+    label: "Reviews",
+    icon: (
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+        />
       </svg>
     ),
   },
@@ -306,9 +306,13 @@ export default function Sidebar({
       <aside
         className={`${
           isCollapsed ? "w-20" : "w-72"
-        } h-screen bg-gradient-to-br from-gray-950/95 via-slate-950/95 to-gray-900/95 backdrop-blur-xl border-r border-slate-600/20 shadow-2xl transition-all duration-300 relative overflow-hidden ${
+        } h-screen backdrop-blur-xl border-r shadow-2xl transition-all duration-300 relative overflow-hidden ${
           isMobile && isMobileMenuOpen ? "translate-x-0" : isMobile ? "-translate-x-full" : "translate-x-0"
-        } ${isMobile ? "fixed" : "relative"} z-50`}
+        } ${isMobile ? "fixed" : "relative"} z-50 ${
+          isDarkMode
+            ? "bg-gradient-to-br from-gray-950/95 via-slate-950/95 to-gray-900/95 border-slate-600/20"
+            : "bg-white/95 border-emerald-100"
+        }`}
       >
         {/* Background Effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -371,7 +375,11 @@ export default function Sidebar({
             {!isMobile && (
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="hidden md:flex p-2 bg-gray-800/50 backdrop-blur-sm border border-slate-600/30 rounded-xl text-slate-400 hover:text-emerald-400 hover:border-emerald-400/40 transition-all duration-300"
+                className={`hidden md:flex p-2 backdrop-blur-sm border rounded-xl transition-all duration-300 ${
+                  isDarkMode 
+                    ? "bg-gray-800/50 border-slate-600/30 text-slate-400 hover:text-emerald-400 hover:border-emerald-400/40" 
+                    : "bg-gray-50 border-gray-200 text-gray-500 hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50"
+                }`}
               >
                 <svg
                   className={`w-5 h-5 transition-transform duration-300 ${
@@ -414,8 +422,10 @@ export default function Sidebar({
                     isCollapsed ? "justify-center" : "justify-start"
                   } space-x-3 px-4 py-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
                     isActive
-                      ? "bg-gradient-to-r from-emerald-400/20 via-green-500/20 to-teal-600/20 text-emerald-300 border border-emerald-400/30 shadow-lg shadow-emerald-500/20"
-                      : "text-slate-300 hover:text-white hover:bg-gradient-to-r hover:from-emerald-400/10 hover:via-green-500/10 hover:to-teal-600/10 border border-transparent hover:border-emerald-400/20"
+                      ? "bg-gradient-to-r from-emerald-400/20 via-green-500/20 to-teal-600/20 text-emerald-500 border border-emerald-400/30 shadow-lg shadow-emerald-500/20"
+                      : isDarkMode
+                        ? "text-slate-300 hover:text-white hover:bg-gradient-to-r hover:from-emerald-400/10 hover:via-green-500/10 hover:to-teal-600/10 border border-transparent hover:border-emerald-400/20"
+                        : "text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200"
                   }`}
                   style={{
                     animationDelay: `${index * 100}ms`,
@@ -431,11 +441,11 @@ export default function Sidebar({
 
                   {/* Icon */}
                   <div
-                    className={`relative z-10 ${
+                    className={`relative z-10 transition-colors duration-300 ${
                       isActive
-                        ? "text-emerald-300"
-                        : "text-slate-400 group-hover:text-emerald-400"
-                    } transition-colors duration-300`}
+                        ? isDarkMode ? "text-emerald-300" : "text-emerald-600"
+                        : isDarkMode ? "text-slate-400 group-hover:text-emerald-400" : "text-gray-500 group-hover:text-emerald-600"
+                    }`}
                   >
                     {link.icon}
                   </div>
@@ -444,7 +454,9 @@ export default function Sidebar({
                   {!isCollapsed && (
                     <span
                       className={`relative z-10 font-medium transition-colors duration-300 ${
-                        isActive ? "text-white" : "group-hover:text-white"
+                        isActive 
+                          ? isDarkMode ? "text-white" : "text-emerald-800" 
+                          : isDarkMode ? "group-hover:text-white" : "group-hover:text-emerald-700"
                       }`}
                     >
                       {link.label}
@@ -515,7 +527,7 @@ export default function Sidebar({
 
               {/* Label */}
               {!isCollapsed && (
-                <span className="relative z-10 font-medium transition-colors duration-300">
+                <span className={`relative z-10 font-medium transition-colors duration-300 ${isDarkMode ? "text-slate-300 group-hover:text-white" : "text-gray-700"}`}>
                   {isDarkMode ? "Light Mode" : "Dark Mode"}
                 </span>
               )}

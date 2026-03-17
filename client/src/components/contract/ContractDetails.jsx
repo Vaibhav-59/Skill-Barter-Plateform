@@ -105,7 +105,8 @@ export default function ContractDetails({ contract, myId, onClose, onUpdate }) {
           </div>
 
           {/* Progress */}
-          <div className="bg-gray-800/40 border border-gray-700/40 rounded-2xl p-5">
+          <div className="bg-gray-800/40 border border-gray-700/40 rounded-2xl p-5 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             <ContractProgress completed={contract.completedSessions} total={contract.totalSessions} />
           </div>
 

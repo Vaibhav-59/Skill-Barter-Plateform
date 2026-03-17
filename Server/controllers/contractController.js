@@ -208,6 +208,9 @@ exports.scheduleSession = async (req, res) => {
     const userId = req.user._id;
     const { sessionNumber, date, startTime, endTime, meetingLink, notes } = req.body;
 
+    const SkillContract = require("../models/SkillContract");
+    const Session = require("../models/Session");
+
     const contract = await SkillContract.findById(req.params.id)
       .populate("userA", "name email avatar")
       .populate("userB", "name email avatar");
@@ -227,33 +230,70 @@ exports.scheduleSession = async (req, res) => {
     if (sessionIdx === -1)
       return res.status(404).json({ success: false, message: "Session slot not found" });
 
-    const session = contract.sessions[sessionIdx];
-    if (session.status === "completed")
+    const contractSession = contract.sessions[sessionIdx];
+    if (contractSession.status === "completed")
       return res.status(400).json({ success: false, message: "Session already completed" });
 
-    session.date = date;
-    session.startTime = startTime;
-    session.endTime = endTime;
-    if (meetingLink !== undefined) session.meetingLink = meetingLink;
-    if (notes !== undefined) session.notes = notes;
-    session.status = "scheduled";
-    session.reminderSent1h = false;
-    session.reminderSent10m = false;
+    // Update contract session data
+    contractSession.date = date;
+    contractSession.startTime = startTime;
+    contractSession.endTime = endTime;
+    if (meetingLink !== undefined) contractSession.meetingLink = meetingLink;
+    if (notes !== undefined) contractSession.notes = notes;
+    contractSession.status = "scheduled"; // In contract, we mark it as 'scheduled' (waiting for meeting)
+    
+    // Also Sync to independent Session model
+    const otherUserId = isA ? contract.userB._id : contract.userA._id;
+    
+    // Check if a Session document already exists for this contract and sessionNumber
+    let mainSession = await Session.findOne({ 
+      contractId: contract._id, 
+      contractSessionNumber: Number(sessionNumber) 
+    });
+
+    if (mainSession) {
+      // Update existing (reschedule)
+      mainSession.date = date;
+      mainSession.startTime = startTime;
+      mainSession.endTime = endTime;
+      mainSession.meetingLink = meetingLink || "";
+      mainSession.notes = notes || "";
+      mainSession.status = "pending"; // Back to pending so other user accepts the new time
+      await mainSession.save();
+    } else {
+      // Create new session entry
+      mainSession = await Session.create({
+        hostUser: userId,
+        participantUser: otherUserId,
+        skillTeach: isA ? contract.skillTeach : contract.skillLearn,
+        skillLearn: isA ? contract.skillLearn : contract.skillTeach,
+        date,
+        startTime,
+        endTime,
+        meetingLink: meetingLink || "",
+        notes: notes || "",
+        status: "pending",
+        contractId: contract._id,
+        contractSessionNumber: Number(sessionNumber)
+      });
+    }
 
     await contract.save();
 
     // Notify the other user
-    const otherUserId = isA ? contract.userB._id : contract.userA._id;
     const notif = await Notification.create({
       recipient: otherUserId,
       type: "reminder",
-      content: `${req.user.name} scheduled Session #${sessionNumber} of your ${contract.skillTeach} ↔ ${contract.skillLearn} contract on ${new Date(date).toLocaleDateString()} at ${startTime}.`,
+      content: `${req.user.name} scheduled Session #${sessionNumber} of your ${contract.skillTeach} ↔ ${contract.skillLearn} contract. Please check your Sessions page to accept/reject.`,
       relatedId: contract._id,
       relatedModel: "Match",
     });
+    
     const io = req.app.get("io");
     if (io && io.sendNotificationToUser) {
       io.sendNotificationToUser(otherUserId.toString(), notif);
+      // Also notify session update
+      io.emit("sessionUpdate", { type: "scheduled", sessionId: mainSession._id });
     }
 
     res.status(200).json({ success: true, data: contract });
@@ -268,6 +308,9 @@ exports.completeContractSession = async (req, res) => {
   try {
     const userId = req.user._id;
     const { sessionNumber } = req.body;
+
+    const SkillContract = require("../models/SkillContract");
+    const Session = require("../models/Session");
 
     const contract = await SkillContract.findById(req.params.id)
       .populate("userA", "name email avatar")
@@ -292,6 +335,12 @@ exports.completeContractSession = async (req, res) => {
     contract.syncCompletedSessions();
     await contract.save();
 
+    // Sync with main Session model
+    await Session.findOneAndUpdate(
+      { contractId: contract._id, contractSessionNumber: Number(sessionNumber) },
+      { status: "completed" }
+    );
+
     // Notify other party
     const otherUserId = isA ? contract.userB._id : contract.userA._id;
     const progressPct = Math.round((contract.completedSessions / contract.totalSessions) * 100);
@@ -302,9 +351,11 @@ exports.completeContractSession = async (req, res) => {
       relatedId: contract._id,
       relatedModel: "Match",
     });
+    
     const io = req.app.get("io");
     if (io && io.sendNotificationToUser) {
       io.sendNotificationToUser(otherUserId.toString(), notif);
+      io.emit("sessionUpdate", { type: "completed", contractId: contract._id, sessionNumber });
     }
 
     res.status(200).json({ success: true, data: contract });

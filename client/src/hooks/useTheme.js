@@ -10,7 +10,7 @@ export const useTheme = () => {
     isDarkMode,
     toggleTheme,
     // Helper classes for common theme patterns
-    bgClass: isDarkMode ? "bg-gray-900" : "bg-white",
+    bgClass: isDarkMode ? "bg-gray-900" : "bg-slate-50",
     textClass: isDarkMode ? "text-white" : "text-gray-800",
     borderClass: isDarkMode ? "border-gray-700" : "border-gray-200",
     cardClass: isDarkMode 

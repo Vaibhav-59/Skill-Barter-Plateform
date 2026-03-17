@@ -105,8 +105,13 @@ const UpcomingSessions = ({ sessions, onUpdate }) => {
                      <LucideUserCircle className="w-6 h-6 text-emerald-500" />
                   </div>
                   <div>
-                    <h4 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-800'}`}>
+                    <h4 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-800'} flex items-center gap-2`}>
                       {partner?.name || "Unknown User"}
+                      {session.contractId && (
+                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[8px] font-black uppercase tracking-tighter rounded border border-emerald-500/20">
+                          📜 Contract
+                        </span>
+                      )}
                     </h4>
                     <div className="flex items-center gap-1 mt-0.5">
                       <LucideClock className="w-3 h-3 text-emerald-400" />

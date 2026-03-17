@@ -32,7 +32,7 @@ export default function Layout() {
     <div className={`min-h-screen relative transition-colors duration-500 ${
       isDarkMode 
         ? 'bg-gradient-to-br from-black via-gray-950 to-slate-950' 
-        : 'bg-white'
+        : 'bg-gradient-to-br from-slate-50 via-white to-emerald-50/50'
     }`}>
       {/* Mobile Menu Overlay */}
       {isMobile && isMobileMenuOpen && (

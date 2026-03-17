@@ -12,7 +12,7 @@ export default function AuthPage() {
     <div className={`min-h-screen flex items-center justify-center p-4 transition-all duration-500 ${
       isDarkMode 
         ? 'bg-gradient-to-br from-[#4A6FFF] to-[#34D399]' 
-        : 'bg-white'
+        : 'bg-gradient-to-br from-indigo-50 via-white to-emerald-50/50'
     }`}>
       <div className={`rounded-2xl shadow-xl w-full max-w-md overflow-hidden transition-all duration-500 ${
         isDarkMode ? 'bg-gray-900' : 'bg-white border border-gray-200'

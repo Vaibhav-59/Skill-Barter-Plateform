@@ -77,7 +77,7 @@ export default function ProfilePage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [dispatch]);
-
+ 
   useEffect(() => {
     if (isEditing) {
       setForm(prev => ({
@@ -417,7 +417,7 @@ export default function ProfilePage() {
     <div className={`min-h-screen relative overflow-hidden transition-all duration-500 ${
       isDarkMode 
         ? 'bg-gradient-to-br from-black via-gray-950 to-slate-950' 
-        : 'bg-white'
+        : 'bg-gradient-to-br from-slate-50 via-white to-emerald-50/50'
     }`}>
       {/* Enhanced Background Effects */}
       <div className={`fixed inset-0 overflow-hidden pointer-events-none transition-all duration-500 ${

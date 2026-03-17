@@ -32,23 +32,35 @@ exports.createSession = async (req, res) => {
     // Auto-sync schedule to active contract if one exists
     try {
       const SkillContract = require("../models/SkillContract");
-      const activeContract = await SkillContract.findOne({
-        status: "active",
-        $or: [
-          { userA: hostUser, userB: participantUser },
-          { userA: participantUser, userB: hostUser },
-        ],
-      });
+      let activeContract;
+      
+      if (req.body.contractId) {
+        activeContract = await SkillContract.findById(req.body.contractId);
+      } else {
+        activeContract = await SkillContract.findOne({
+          status: "active",
+          $or: [
+            { userA: hostUser, userB: participantUser },
+            { userA: participantUser, userB: hostUser },
+          ],
+        });
+      }
 
       if (activeContract) {
-        const pendingSlot = activeContract.sessions.find((s) => s.status === "pending");
-        if (pendingSlot) {
-          pendingSlot.status = "scheduled";
-          pendingSlot.date = date;
-          pendingSlot.startTime = startTime;
-          pendingSlot.endTime = endTime;
-          if (meetingLink) pendingSlot.meetingLink = meetingLink;
-          if (notes) pendingSlot.notes = notes;
+        let slot;
+        if (req.body.contractSessionNumber) {
+          slot = activeContract.sessions.find(s => s.sessionNumber === Number(req.body.contractSessionNumber));
+        } else {
+          slot = activeContract.sessions.find((s) => s.status === "pending");
+        }
+
+        if (slot) {
+          slot.status = "scheduled";
+          slot.date = date;
+          slot.startTime = startTime;
+          slot.endTime = endTime;
+          if (meetingLink) slot.meetingLink = meetingLink;
+          if (notes) slot.notes = notes;
           await activeContract.save();
         }
       }
@@ -104,6 +116,23 @@ exports.acceptSession = async (req, res) => {
 
     session.status = "accepted";
     await session.save();
+
+    // Sync acceptance back to contract if applicable
+    if (session.contractId && session.contractSessionNumber) {
+      try {
+        const SkillContract = require("../models/SkillContract");
+        const contract = await SkillContract.findById(session.contractId);
+        if (contract) {
+          const slot = contract.sessions.find(s => s.sessionNumber === session.contractSessionNumber);
+          if (slot) {
+            slot.status = "scheduled"; // Mark as confirmed scheduled
+            await contract.save();
+          }
+        }
+      } catch (err) {
+        console.error("Sync accept error:", err);
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -166,17 +195,28 @@ exports.completeSession = async (req, res) => {
     // Auto-sync complete to active contract if one exists
     try {
       const SkillContract = require("../models/SkillContract");
-      const activeContract = await SkillContract.findOne({
-        status: "active",
-        $or: [
-          { userA: session.hostUser, userB: session.participantUser },
-          { userA: session.participantUser, userB: session.hostUser },
-        ],
-      });
+      let activeContract;
+
+      if (session.contractId) {
+        activeContract = await SkillContract.findById(session.contractId);
+      } else {
+        activeContract = await SkillContract.findOne({
+          status: "active",
+          $or: [
+            { userA: session.hostUser, userB: session.participantUser },
+            { userA: session.participantUser, userB: session.hostUser },
+          ],
+        });
+      }
 
       if (activeContract) {
-        // Find the first session that is not completed
-        const slot = activeContract.sessions.find((s) => s.status !== "completed" && s.status !== "cancelled");
+        let slot;
+        if (session.contractSessionNumber) {
+          slot = activeContract.sessions.find(s => s.sessionNumber === session.contractSessionNumber);
+        } else {
+          slot = activeContract.sessions.find((s) => s.status !== "completed" && s.status !== "cancelled");
+        }
+
         if (slot) {
           slot.status = "completed";
           activeContract.syncCompletedSessions();

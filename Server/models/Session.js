@@ -53,6 +53,13 @@ const sessionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    contractId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SkillContract",
+    },
+    contractSessionNumber: {
+      type: Number,
+    },
   },
   { timestamps: true }
 );

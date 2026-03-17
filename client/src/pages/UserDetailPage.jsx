@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import { useTheme } from "../hooks/useTheme";
 
 export default function UserDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isDarkMode, bgClass, textClass, cardClass, borderClass } = useTheme();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -159,7 +161,7 @@ export default function UserDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-slate-950 relative overflow-hidden">
+      <div className={`min-h-screen relative overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-gradient-to-br from-black via-gray-950 to-slate-950' : 'bg-gradient-to-br from-slate-50 via-white to-emerald-50/50'}`}>
         {/* Background Effects */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-400/5 rounded-full blur-3xl animate-pulse"></div>
@@ -176,7 +178,7 @@ export default function UserDetailPage() {
             <div className="w-16 h-16 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 animate-pulse shadow-2xl shadow-emerald-500/10">
               <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
             </div>
-            <div className="text-xl font-semibold bg-gradient-to-r from-white via-gray-100 to-slate-200 bg-clip-text text-transparent pb-4">
+            <div className={`text-xl font-semibold bg-clip-text text-transparent pb-4 ${isDarkMode ? 'bg-gradient-to-r from-white via-gray-100 to-slate-200' : 'bg-gradient-to-r from-emerald-600 via-green-600 to-teal-700'}`}>
               Loading user details...
             </div>
           </div>
@@ -187,7 +189,7 @@ export default function UserDetailPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-slate-950 relative overflow-hidden">
+      <div className={`min-h-screen relative overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-gradient-to-br from-black via-gray-950 to-slate-950' : 'bg-gradient-to-br from-slate-50 via-white to-emerald-50/50'}`}>
         {/* Background Effects */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-400/5 rounded-full blur-3xl animate-pulse"></div>
@@ -195,13 +197,13 @@ export default function UserDetailPage() {
         </div>
 
         <div className="relative z-10 text-center py-12 px-4">
-          <div className="max-w-md mx-auto bg-gray-950/40 backdrop-blur-xl border border-gray-800/40 rounded-3xl p-12 shadow-2xl">
+          <div className={`max-w-md mx-auto backdrop-blur-xl rounded-3xl p-12 shadow-2xl ${isDarkMode ? 'bg-gray-950/40 border border-gray-800/40' : 'bg-white/80 border border-gray-200'}`}>
             <div className="w-20 h-20 bg-gradient-to-r from-red-400/20 via-red-500/15 to-red-600/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
               <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 15.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent mb-4">User not found</div>
+            <div className={`text-2xl font-bold bg-clip-text text-transparent mb-4 ${isDarkMode ? 'bg-gradient-to-r from-white to-slate-200' : 'bg-gradient-to-r from-gray-800 to-slate-900'}`}>User not found</div>
             <button
               onClick={() => navigate("/dashboard")}
               className="px-6 py-3 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 text-white font-semibold rounded-xl hover:from-emerald-500 hover:via-green-600 hover:to-teal-700 transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-emerald-500/15"
@@ -215,7 +217,7 @@ export default function UserDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-slate-950 relative overflow-hidden">
+    <div className={`min-h-screen relative overflow-hidden transition-colors duration-500 ${isDarkMode ? 'bg-gradient-to-br from-black via-gray-950 to-slate-950' : 'bg-gradient-to-br from-slate-50 via-white to-emerald-50/50'}`}>
       {/* Enhanced Background Effects - Reduced Lighting */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-400/5 rounded-full blur-3xl animate-pulse"></div>
@@ -248,7 +250,7 @@ export default function UserDetailPage() {
         </button> */}
 
         {/* User Profile Header */}
-        <div className="bg-gray-950/25 backdrop-blur-xl border border-gray-800/30 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
+        <div className={`${isDarkMode ? 'bg-gray-950/25 border-gray-800/30' : 'bg-white/60 border-emerald-100'} backdrop-blur-xl border rounded-3xl shadow-2xl p-8 relative overflow-hidden transition-colors duration-300`}>
           <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/2 via-green-500/1 to-teal-600/2 rounded-3xl opacity-40"></div>
           
           <div className="relative flex flex-col lg:flex-row items-center lg:items-start gap-8">
@@ -262,7 +264,7 @@ export default function UserDetailPage() {
 
             {/* User Info */}
             <div className="flex-1 text-center lg:text-left">
-              <h1 className="text-4xl font-black bg-gradient-to-r from-white via-gray-100 to-slate-200 bg-clip-text text-transparent mb-2">
+              <h1 className={`text-4xl font-black bg-clip-text text-transparent mb-2 ${isDarkMode ? 'bg-gradient-to-r from-white via-gray-100 to-slate-200' : 'bg-gradient-to-r from-emerald-800 via-teal-900 to-emerald-950'}`}>
                 {user.name || "Anonymous User"}
               </h1>
               
@@ -272,10 +274,10 @@ export default function UserDetailPage() {
                 </div>
               )}
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm font-medium text-slate-300 mb-6">
+              <div className={`flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm font-medium mb-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                 {user.location && (user.location.city || user.location.country || typeof user.location === 'string') && (
-                  <div className="flex items-center gap-1.5 bg-gray-900/40 px-3 py-1.5 rounded-full border border-gray-800/50 shadow-sm">
-                    <span className="text-emerald-400">📍</span>
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm ${isDarkMode ? 'bg-gray-900/40 border-gray-800/50' : 'bg-emerald-50/80 border-emerald-200/50'}`}>
+                    <span className="text-emerald-500">📍</span>
                     <span>
                       {typeof user.location === 'string' 
                         ? user.location 
@@ -285,16 +287,16 @@ export default function UserDetailPage() {
                 )}
                 
                 {user.experienceLevel && (
-                  <div className="flex items-center gap-1.5 bg-gray-900/40 px-3 py-1.5 rounded-full border border-gray-800/50 shadow-sm capitalize">
-                    <span className="text-orange-400">🏆</span>
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm capitalize ${isDarkMode ? 'bg-gray-900/40 border-gray-800/50' : 'bg-orange-50/80 border-orange-200/50'}`}>
+                    <span className="text-orange-500">🏆</span>
                     <span>{user.experienceLevel} Level</span>
                   </div>
                 )}
               </div>
 
               {user.bio && (
-                <div className="bg-gray-900/30 backdrop-blur-sm border border-gray-800/25 rounded-2xl p-6">
-                  <p className="text-slate-300 leading-relaxed text-lg">{user.bio}</p>
+                <div className={`backdrop-blur-sm border rounded-2xl p-6 ${isDarkMode ? 'bg-gray-900/30 border-gray-800/25' : 'bg-emerald-50/40 border-emerald-100/50'}`}>
+                  <p className={`leading-relaxed text-lg ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{user.bio}</p>
                 </div>
               )}
             </div>
@@ -317,7 +319,11 @@ export default function UserDetailPage() {
 
             <button
               onClick={handleSendMatchRequest}
-              className="group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800/30 hover:border-emerald-400/20 text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 hover:bg-gray-900/70 shadow-lg overflow-hidden"
+              className={`group relative backdrop-blur-sm border text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg overflow-hidden ${
+                isDarkMode 
+                  ? 'bg-gray-900/50 border-gray-800/30 hover:border-emerald-400/20 hover:bg-gray-900/70' 
+                  : 'bg-emerald-600/90 border-emerald-500/30 hover:border-emerald-500/50 hover:bg-emerald-700'
+              }`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/0 via-emerald-400/5 to-emerald-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="relative flex items-center justify-center gap-3">
@@ -330,7 +336,11 @@ export default function UserDetailPage() {
 
             <button
               onClick={handleViewReviews}
-              className="group relative bg-gray-900/50 backdrop-blur-sm border border-gray-800/30 hover:border-yellow-400/20 text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 hover:bg-gray-900/70 shadow-lg overflow-hidden"
+              className={`group relative backdrop-blur-sm border text-white py-4 px-6 rounded-2xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg overflow-hidden ${
+                isDarkMode 
+                  ? 'bg-gray-900/50 border-gray-800/30 hover:border-yellow-400/20 hover:bg-gray-900/70' 
+                  : 'bg-yellow-500/90 border-yellow-400/30 hover:border-yellow-500/50 hover:bg-yellow-600'
+              }`}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/0 via-yellow-400/5 to-yellow-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="relative flex items-center justify-center gap-3">
@@ -346,7 +356,11 @@ export default function UserDetailPage() {
         {/* Skills Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Teaching Skills */}
-          <div className="group bg-gray-950/25 backdrop-blur-xl border border-gray-800/30 rounded-3xl shadow-xl p-8 hover:bg-gray-950/40 hover:border-emerald-400/10 transition-all duration-300 relative overflow-hidden">
+          <div className={`group backdrop-blur-xl border rounded-3xl shadow-xl p-8 transition-all duration-300 relative overflow-hidden ${
+            isDarkMode 
+              ? 'bg-gray-950/25 border-gray-800/30 hover:bg-gray-950/40 hover:border-emerald-400/10' 
+              : 'bg-white/60 border-emerald-100 hover:bg-white/80 hover:border-emerald-200'
+          }`}>
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/0 via-emerald-400/2 to-emerald-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
             
             <div className="relative">
@@ -356,7 +370,7 @@ export default function UserDetailPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-white">Can Teach</h3>
+                <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Can Teach</h3>
               </div>
 
               {user.teachSkills && user.teachSkills.length > 0 ? (
@@ -364,9 +378,13 @@ export default function UserDetailPage() {
                   {user.teachSkills.map((skill, index) => (
                     <div
                       key={index}
-                      className="group/skill flex justify-between items-center p-4 bg-gray-900/30 backdrop-blur-sm border border-gray-800/25 rounded-2xl hover:bg-gray-900/50 hover:border-emerald-400/15 transition-all duration-300 transform hover:scale-102"
+                      className={`group/skill flex justify-between items-center p-4 backdrop-blur-sm border rounded-2xl transition-all duration-300 transform hover:scale-102 ${
+                        isDarkMode 
+                          ? 'bg-gray-900/30 border-gray-800/25 hover:bg-gray-900/50 hover:border-emerald-400/15' 
+                          : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-100/50 hover:border-emerald-300'
+                      }`}
                     >
-                      <span className="font-semibold text-white text-lg group-hover/skill:text-emerald-300 transition-colors duration-300">
+                      <span className={`font-semibold text-lg transition-colors duration-300 ${isDarkMode ? 'text-white group-hover/skill:text-emerald-300' : 'text-slate-700 group-hover/skill:text-emerald-700'}`}>
                         {skill.name}
                       </span>
                       <span className="px-4 py-2 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/10">
@@ -377,19 +395,23 @@ export default function UserDetailPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gradient-to-r from-gray-700/50 via-gray-600/40 to-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${isDarkMode ? 'bg-gradient-to-r from-gray-700/50 via-gray-600/40 to-gray-700/50' : 'bg-gray-100'}`}>
+                    <svg className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                   </div>
-                  <p className="text-slate-400 text-lg">No teaching skills listed</p>
+                  <p className={`text-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>No teaching skills listed</p>
                 </div>
               )}
             </div>
           </div>
 
           {/* Learning Skills */}
-          <div className="group bg-gray-950/25 backdrop-blur-xl border border-gray-800/30 rounded-3xl shadow-xl p-8 hover:bg-gray-950/40 hover:border-blue-400/10 transition-all duration-300 relative overflow-hidden">
+          <div className={`group backdrop-blur-xl border rounded-3xl shadow-xl p-8 transition-all duration-300 relative overflow-hidden ${
+            isDarkMode 
+              ? 'bg-gray-950/25 border-gray-800/30 hover:bg-gray-950/40 hover:border-blue-400/10' 
+              : 'bg-white/60 border-blue-100 hover:bg-white/80 hover:border-blue-200'
+          }`}>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 via-blue-400/2 to-blue-400/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
             
             <div className="relative">
@@ -399,7 +421,7 @@ export default function UserDetailPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-white">Wants to Learn</h3>
+                <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Wants to Learn</h3>
               </div>
 
               {user.learnSkills && user.learnSkills.length > 0 ? (
@@ -407,9 +429,13 @@ export default function UserDetailPage() {
                   {user.learnSkills.map((skill, index) => (
                     <div
                       key={index}
-                      className="group/skill flex justify-between items-center p-4 bg-gray-900/30 backdrop-blur-sm border border-gray-800/25 rounded-2xl hover:bg-gray-900/50 hover:border-blue-400/15 transition-all duration-300 transform hover:scale-102"
+                      className={`group/skill flex justify-between items-center p-4 backdrop-blur-sm border rounded-2xl transition-all duration-300 transform hover:scale-102 ${
+                        isDarkMode 
+                          ? 'bg-gray-900/30 border-gray-800/25 hover:bg-gray-900/50 hover:border-blue-400/15'
+                          : 'bg-blue-50/50 border-blue-100 hover:bg-blue-100/50 hover:border-blue-300'
+                      }`}
                     >
-                      <span className="font-semibold text-white text-lg group-hover/skill:text-blue-300 transition-colors duration-300">
+                      <span className={`font-semibold text-lg transition-colors duration-300 ${isDarkMode ? 'text-white group-hover/skill:text-blue-300' : 'text-slate-700 group-hover/skill:text-blue-700'}`}>
                         {skill.name}
                       </span>
                       <span className="px-4 py-2 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/10">
@@ -420,12 +446,12 @@ export default function UserDetailPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gradient-to-r from-gray-700/50 via-gray-600/40 to-gray-700/50 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg ${isDarkMode ? 'bg-gradient-to-r from-gray-700/50 via-gray-600/40 to-gray-700/50' : 'bg-gray-100'}`}>
+                    <svg className={`w-8 h-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
-                  <p className="text-slate-400 text-lg">No learning goals listed</p>
+                  <p className={`text-lg ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>No learning goals listed</p>
                 </div>
               )}
             </div>
@@ -434,7 +460,7 @@ export default function UserDetailPage() {
 
         {/* Availability */}
         {user.availability && user.availability.length > 0 && (
-          <div className="bg-gray-950/25 backdrop-blur-xl border border-gray-800/30 rounded-3xl shadow-xl p-8 relative overflow-hidden">
+          <div className={`${isDarkMode ? 'bg-gray-950/25 border-gray-800/30' : 'bg-white/60 border-purple-100'} backdrop-blur-xl border rounded-3xl shadow-xl p-8 relative overflow-hidden transition-colors duration-300`}>
             <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-purple-400/2 to-purple-400/0 opacity-0 hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
             
             <div className="relative">
@@ -444,14 +470,18 @@ export default function UserDetailPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-white">Availability</h3>
+                <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Availability</h3>
               </div>
               
               <div className="flex flex-wrap gap-3">
                 {user.availability.map((time, index) => (
                   <span
                     key={index}
-                    className="group px-4 py-3 bg-gray-900/30 backdrop-blur-sm border border-gray-800/25 hover:border-purple-400/15 text-purple-300 hover:text-purple-200 rounded-2xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 hover:bg-gray-900/50 shadow-lg"
+                    className={`group px-4 py-3 backdrop-blur-sm border rounded-2xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg ${
+                      isDarkMode 
+                        ? 'bg-gray-900/30 border-gray-800/25 hover:border-purple-400/15 text-purple-300 hover:text-purple-200 hover:bg-gray-900/50' 
+                        : 'bg-purple-50/80 border-purple-200 hover:border-purple-300 text-purple-700 hover:text-purple-800 hover:bg-purple-100/80'
+                    }`}
                   >
                     {time}
                   </span>
@@ -483,7 +513,7 @@ export default function UserDetailPage() {
           if (allCerts.length === 0) return null;
 
           return (
-          <div className="bg-gray-950/25 backdrop-blur-xl border border-gray-800/30 rounded-3xl shadow-xl p-8 relative overflow-hidden">
+          <div className={`${isDarkMode ? 'bg-gray-950/25 border-gray-800/30' : 'bg-white/60 border-amber-100'} backdrop-blur-xl border rounded-3xl shadow-xl p-8 relative overflow-hidden transition-colors duration-300`}>
             <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-amber-400/2 to-amber-400/0 opacity-0 hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
             
             <div className="relative">
@@ -493,7 +523,7 @@ export default function UserDetailPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-white">Skill Certificates ({allCerts.length})</h3>
+                <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>Skill Certificates ({allCerts.length})</h3>
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -505,7 +535,9 @@ export default function UserDetailPage() {
                   return (
                     <div
                       key={index}
-                      className="group relative bg-gray-900/30 backdrop-blur-sm border border-gray-800/25 rounded-2xl overflow-hidden hover:border-amber-400/15 transition-all duration-300 transform hover:scale-105"
+                      className={`group relative backdrop-blur-sm border rounded-2xl overflow-hidden hover:border-amber-400/15 transition-all duration-300 transform hover:scale-105 ${
+                        isDarkMode ? 'bg-gray-900/30 border-gray-800/25' : 'bg-amber-50/50 border-amber-200/50'
+                      }`}
                     >
                       {isPdf ? (
                         <div
