@@ -131,6 +131,20 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    isGithubConnected: { type: Boolean, default: false },
+    isLinkedinConnected: { type: Boolean, default: false },
+    isTwitterConnected: { type: Boolean, default: false },
+    isPortfolioConnected: { type: Boolean, default: false },
+    githubData: {
+      reposCount: { type: Number, default: 0 },
+      stars: { type: Number, default: 0 },
+      languages: { type: [String], default: [] }
+    },
+    // Referral System Additions
+    referralCode: { type: String, unique: true, sparse: true },
+    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    referralEarnings: { type: Number, default: 0 },
+    timeCredits: { type: Number, default: 0 }, // For Time Banking
   },
   { timestamps: true }
 );

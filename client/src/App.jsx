@@ -40,6 +40,8 @@ import SmartContractPage from "./pages/SmartContractPage";
 import SkillsExperts from "./pages/SkillsExperts";
 import SkillExpertsList from "./pages/SkillExpertsList";
 import ExpertProfile from "./pages/ExpertProfile";
+import SkillHub from "./pages/SkillHub";
+import SocialIntegration from "./pages/SocialIntegration";
 
 export default function App() {
   return (
@@ -78,6 +80,8 @@ export default function App() {
             <Route path="meeting" element={<MeetingPage />} />
             <Route path="sessions" element={<SessionScheduler />} />
             <Route path="contracts" element={<SmartContractPage />} />
+            <Route path="skill-hub" element={<SkillHub />} />
+            <Route path="skill-hub/social-integration" element={<SocialIntegration />} />
           </Route>
 
           {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { validatePassword as validateStrongPassword } from "../../utils/validation";
 
 const Spinner = ({ size }) => (
@@ -84,6 +84,9 @@ export default function RegisterForm() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get("ref");
 
   // Auto-close success modal and redirect after 3 seconds
   useEffect(() => {
@@ -219,6 +222,7 @@ export default function RegisterForm() {
           name: form.name,
           email: form.email,
           password: form.password,
+          referralCode: refCode, // Pass referral code if available
         }),
       });
 

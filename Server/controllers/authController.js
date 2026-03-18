@@ -4,6 +4,9 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendEmail, sendOTPEmail, generateOTP } = require("../utils/sendEmail");
 const { checkInactiveUsers } = require("../utils/inactiveUserHandler");
+const Referral = require("../models/Referral");
+const Notification = require("../models/Notification");
+const ErrorResponse = require("../utils/errorResponse");
 
 const validatePassword = (password) => {
   if (!password) return "Password is required";
@@ -88,6 +91,37 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({ message: "Email already in use" });
 
     const user = await User.create({ name, email, password });
+
+    // Handle referral if referralCode is provided
+    const referralCode = req.body.referralCode;
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode });
+      if (referrer) {
+        user.referredBy = referrer._id;
+        await user.save();
+
+        // Create Referral record
+        await Referral.create({
+          referrerId: referrer._id,
+          referredUserId: user._id,
+          status: 'Joined',
+          creditsEarned: 5
+        });
+
+        // Reward Referrer
+        referrer.referralEarnings += 5;
+        referrer.timeCredits += 5;
+        await referrer.save();
+
+        // Notify Referrer
+        await Notification.create({
+          recipient: referrer._id,
+          type: 'referral',
+          content: `${user.name} joined using your referral link! You earned 5 skill credits.`
+        });
+      }
+    }
+
     const token = generateToken(user._id);
     res.status(201).json({ user, token });
   } catch (err) {

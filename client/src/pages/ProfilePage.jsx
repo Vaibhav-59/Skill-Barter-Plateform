@@ -753,15 +753,6 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  {user?.bio && (
-                    <div className="relative mb-4 p-4 bg-gradient-to-r from-slate-700/40 via-gray-700/30 to-slate-800/40 rounded-xl border border-slate-600/30 overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/3 via-green-500/2 to-teal-500/3"></div>
-                      <p className="text-slate-300 leading-relaxed relative z-10 text-sm italic">
-                        "{user.bio}"
-                      </p>
-                    </div>
-                  )}
-
                   <button
                     onClick={openEditModal}
                     className="w-full py-3 px-6 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 hover:from-emerald-500 hover:via-green-600 hover:to-teal-700 text-slate-950 font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-emerald-500/30 relative overflow-hidden group"
