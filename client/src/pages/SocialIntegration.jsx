@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useTheme } from "../hooks/useTheme";
 import { 
@@ -326,7 +327,10 @@ export default function SocialIntegration() {
                 Invite Friends & Rewards
               </h2>
               <p className={`mb-6 text-sm ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
-                Earn skill credits by inviting your friends to join the platform and start learning.
+                Earn skill credits by inviting your friends to join the platform and start learning.{" "}
+                <Link to="/skill-hub/time-banking" className="text-emerald-500 hover:text-emerald-400 font-medium underline">
+                  View Wallet →
+                </Link>
               </p>
               
               <InviteFriends />

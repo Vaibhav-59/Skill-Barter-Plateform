@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 const User = require("../models/User");
 const Referral = require("../models/Referral");
+const Transaction = require("../models/Transaction");
+const Wallet = require("../models/Wallet");
 const asyncHandler = require("../middleware/async");
 const ErrorResponse = require("../utils/errorResponse");
 const Notification = require("../models/Notification");
@@ -116,9 +118,34 @@ exports.rewardCredits = asyncHandler(async (req, res, next) => {
 
   // Give credits to user
   const user = await User.findById(req.user.id);
-  user.referralEarnings += increment;
-  user.timeCredits += increment; // Add to generic wallet (time credits)
+  user.referralEarnings = (user.referralEarnings || 0) + increment;
+  user.timeCredits = (user.timeCredits || 0) + increment; 
   await user.save();
+
+  // Integrated directly with Time Banking wallet
+  try {
+    let wallet = await Wallet.findOne({ userId: user._id });
+    if (!wallet) {
+      wallet = await Wallet.create({ userId: user._id });
+    }
+    wallet.earnedCredits += increment;
+    await wallet.save();
+
+    const referralUser = await User.findById(referral.referredUserId);
+
+    await Transaction.create({
+      userId: user._id,
+      type: "bonus",
+      skillName: "Referral Bonus",
+      duration: 0,
+      credits: increment,
+      status: "completed",
+      description: `Referral reward for ${referralUser ? referralUser.name : 'invitee'} - ${action}`,
+      counterpartUser: referral.referredUserId
+    });
+  } catch (err) {
+    console.error("Failed to add referral bonus to wallet:", err);
+  }
 
   // Notify Referral Owner
   const referralUser = await User.findById(referral.referredUserId);
@@ -137,3 +164,4 @@ exports.rewardCredits = asyncHandler(async (req, res, next) => {
     }
   });
 });
+

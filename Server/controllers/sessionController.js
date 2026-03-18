@@ -1,5 +1,6 @@
 const Session = require("../models/Session");
 const User = require("../models/User");
+const { processSessionCredits } = require("./walletController");
 
 // Create a new session
 exports.createSession = async (req, res) => {
@@ -191,6 +192,13 @@ exports.completeSession = async (req, res) => {
 
     session.status = "completed";
     await session.save();
+
+    // ── Auto-process Time Banking credits ──
+    try {
+      await processSessionCredits(session._id);
+    } catch (creditErr) {
+      console.error("Credit processing failed:", creditErr);
+    }
 
     // Auto-sync complete to active contract if one exists
     try {

@@ -42,6 +42,7 @@ import SkillExpertsList from "./pages/SkillExpertsList";
 import ExpertProfile from "./pages/ExpertProfile";
 import SkillHub from "./pages/SkillHub";
 import SocialIntegration from "./pages/SocialIntegration";
+import TimeBanking from "./pages/TimeBanking";
 
 export default function App() {
   return (
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="contracts" element={<SmartContractPage />} />
             <Route path="skill-hub" element={<SkillHub />} />
             <Route path="skill-hub/social-integration" element={<SocialIntegration />} />
+            <Route path="skill-hub/time-banking" element={<TimeBanking />} />
           </Route>
 
           {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}
