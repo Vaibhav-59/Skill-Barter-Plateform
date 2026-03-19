@@ -1,6 +1,7 @@
 import React from "react";
+import VerificationBadge from "../verification/VerificationBadge";
 
-export default function SkillList({ skills = [], editable = false, onRemove }) {
+export default function SkillList({ skills = [], verifiedSkills = [], editable = false, onRemove }) {
   if (!skills.length) {
     return (
       <div className="text-center py-8">
@@ -103,9 +104,14 @@ export default function SkillList({ skills = [], editable = false, onRemove }) {
               </div>
 
               {/* Skill name */}
-              <h3 className={`font-semibold text-lg ${config.textColor} mb-2 leading-tight`}>
-                {skill.name}
-              </h3>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className={`font-semibold text-lg ${config.textColor} leading-tight`}>
+                  {skill.name}
+                </h3>
+                {verifiedSkills?.some((v) => v.toLowerCase() === skill.name.toLowerCase()) && (
+                  <VerificationBadge size="sm" showLabel={false} />
+                )}
+              </div>
 
               {/* Level badge */}
               <div className="flex items-center justify-between">

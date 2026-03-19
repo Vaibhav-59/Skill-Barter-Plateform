@@ -11,6 +11,7 @@ import EditProfile from "../components/profile/EditProfile";
 import ProfileCard from "../components/profile/ProfileCard";
 import SkillList from "../components/profile/SkillList";
 import { useTheme } from "../hooks/useTheme";
+import VerificationBadge from "../components/verification/VerificationBadge";
 
 export default function ProfilePage() {
   const dispatch = useDispatch();
@@ -1054,9 +1055,14 @@ export default function ProfilePage() {
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/0 via-emerald-400/3 to-emerald-400/0 -translate-x-full group-hover/skill:translate-x-full transition-transform duration-1000 rounded-2xl" />
                         <div className="flex justify-between items-center relative z-10">
-                          <span className="text-slate-100 font-bold text-lg group-hover/skill:text-emerald-200 transition-colors duration-300">
-                            {skill.name}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-100 font-bold text-lg group-hover/skill:text-emerald-200 transition-colors duration-300">
+                              {skill.name}
+                            </span>
+                            {user?.verifiedSkills?.includes(skill.name) && (
+                              <VerificationBadge />
+                            )}
+                          </div>
                           <StarRater skill={skill} type="teach" accentColor="text-emerald-400" />
                         </div>
                       </div>
@@ -1118,9 +1124,14 @@ export default function ProfilePage() {
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-teal-400/0 via-teal-400/3 to-teal-400/0 -translate-x-full group-hover/skill:translate-x-full transition-transform duration-1000 rounded-2xl" />
                         <div className="flex justify-between items-center relative z-10">
-                          <span className="text-slate-100 font-bold text-lg group-hover/skill:text-teal-200 transition-colors duration-300">
-                            {skill.name}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-100 font-bold text-lg group-hover/skill:text-teal-200 transition-colors duration-300">
+                              {skill.name}
+                            </span>
+                            {user?.verifiedSkills?.includes(skill.name) && (
+                              <VerificationBadge />
+                            )}
+                          </div>
                           <StarRater skill={skill} type="learn" accentColor="text-teal-400" />
                         </div>
                       </div>

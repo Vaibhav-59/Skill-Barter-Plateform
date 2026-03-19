@@ -142,7 +142,7 @@ exports.getExpertsBySkill = async (req, res, next) => {
       {
         "teachSkills.name": { $regex: new RegExp(`^${escapedSkill}$`, "i") },
       },
-      { name: 1, profileImage: 1, teachSkills: 1, learnSkills: 1, availability: 1, bio: 1, experienceLevel: 1, location: 1 }
+      { name: 1, profileImage: 1, teachSkills: 1, learnSkills: 1, availability: 1, bio: 1, experienceLevel: 1, location: 1, verifiedSkills: 1 }
     ).lean();
 
     // Fetch ratings for each user
@@ -162,6 +162,7 @@ exports.getExpertsBySkill = async (req, res, next) => {
           teachSkills: user.teachSkills,
           learnSkills: user.learnSkills,
           availability: user.availability,
+          verifiedSkills: user.verifiedSkills,
           skillLevel: skillObj?.level || "Beginner",
           rating: parseFloat((ratingData.averageRating || 0).toFixed(1)),
           reviewCount: ratingData.totalReviews || 0,

@@ -84,6 +84,8 @@ app.use("/api/contracts", require("./routes/contractRoutes"));
 app.use("/api/social", require("./routes/social"));
 app.use("/api/referral", require("./routes/referralRoutes"));
 app.use("/api/wallet", require("./routes/walletRoutes"));
+app.use("/api/group-sessions", require("./routes/groupSessionRoutes"));
+app.use("/api/verification", require("./routes/verificationRoutes"));
 
 // Test route
 app.get("/", (req, res) => {

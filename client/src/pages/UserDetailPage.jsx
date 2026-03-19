@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import { useTheme } from "../hooks/useTheme";
+import VerificationBadge from "../components/verification/VerificationBadge";
 
 export default function UserDetailPage() {
   const { id } = useParams();
@@ -469,9 +470,12 @@ export default function UserDetailPage() {
                           : 'bg-emerald-50/50 border-emerald-100 hover:bg-emerald-100/50 hover:border-emerald-300'
                       }`}
                     >
-                      <span className={`font-semibold text-lg transition-colors duration-300 ${isDarkMode ? 'text-white group-hover/skill:text-emerald-300' : 'text-slate-700 group-hover/skill:text-emerald-700'}`}>
-                        {skill.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-semibold text-lg transition-colors duration-300 ${isDarkMode ? 'text-white group-hover/skill:text-emerald-300' : 'text-slate-700 group-hover/skill:text-emerald-700'}`}>
+                          {skill.name}
+                        </span>
+                        {user.verifiedSkills?.some((v) => v.toLowerCase() === skill.name.toLowerCase()) && <VerificationBadge size="sm" />}
+                      </div>
                       <span className="px-4 py-2 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/10">
                         {skill.level}
                       </span>
@@ -520,9 +524,12 @@ export default function UserDetailPage() {
                           : 'bg-blue-50/50 border-blue-100 hover:bg-blue-100/50 hover:border-blue-300'
                       }`}
                     >
-                      <span className={`font-semibold text-lg transition-colors duration-300 ${isDarkMode ? 'text-white group-hover/skill:text-blue-300' : 'text-slate-700 group-hover/skill:text-blue-700'}`}>
-                        {skill.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-semibold text-lg transition-colors duration-300 ${isDarkMode ? 'text-white group-hover/skill:text-blue-300' : 'text-slate-700 group-hover/skill:text-blue-700'}`}>
+                          {skill.name}
+                        </span>
+                        {user.verifiedSkills?.some((v) => v.toLowerCase() === skill.name.toLowerCase()) && <VerificationBadge size="sm" />}
+                      </div>
                       <span className="px-4 py-2 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/10">
                         {skill.level}
                       </span>

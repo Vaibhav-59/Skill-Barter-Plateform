@@ -18,6 +18,7 @@ export default function SkillsPage() {
 
   const [skills, setSkills] = useState([]);
   const [learnSkills, setLearnSkills] = useState([]);
+  const [verifiedSkills, setVerifiedSkills] = useState([]);
   const [loading, setLoading] = useState(false);
   const [learnLoading, setLearnLoading] = useState(false);
 
@@ -26,6 +27,7 @@ export default function SkillsPage() {
       const res = await api.get("/users/me");
       setSkills(res.data?.teachSkills || []);
       setLearnSkills(res.data?.learnSkills || []);
+      setVerifiedSkills(res.data?.verifiedSkills || []);
     } catch {
       showError("Failed to load skills");
     }
@@ -265,6 +267,7 @@ export default function SkillsPage() {
                     {skills.length > 0 ? (
                       <SkillList
                         skills={skills}
+                        verifiedSkills={verifiedSkills}
                         editable={true}
                         onRemove={removeSkill}
                       />
@@ -405,6 +408,7 @@ export default function SkillsPage() {
                     {learnSkills.length > 0 ? (
                       <SkillList
                         skills={learnSkills}
+                        verifiedSkills={verifiedSkills}
                         editable={true}
                         onRemove={removeLearnSkill}
                       />

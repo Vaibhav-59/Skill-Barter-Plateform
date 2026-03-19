@@ -230,7 +230,7 @@ exports.deleteProfileImage = async (req, res, next) => {
 exports.getAllUsers = async (req, res, next) => {
   try {
     const users = await User.find({ _id: { $ne: req.user._id } })
-      .select("name bio teachSkills learnSkills location role experienceLevel availability skillCertificates certificates profileImage")
+      .select("name bio teachSkills learnSkills verifiedSkills location role experienceLevel availability skillCertificates certificates profileImage")
       .limit(50);
 
     res.json(users);

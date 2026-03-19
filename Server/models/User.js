@@ -145,6 +145,7 @@ const userSchema = new mongoose.Schema(
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     referralEarnings: { type: Number, default: 0 },
     timeCredits: { type: Number, default: 0 }, // For Time Banking
+    verifiedSkills: { type: [String], default: [] }, // For Skill Verification
   },
   { timestamps: true }
 );

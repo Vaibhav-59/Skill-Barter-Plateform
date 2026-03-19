@@ -1,6 +1,6 @@
-// components/ExpertListItem.jsx
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../hooks/useTheme";
+import VerificationBadge from "./verification/VerificationBadge";
 
 const StarRating = ({ rating }) => {
   return (
@@ -71,6 +71,9 @@ export default function ExpertListItem({ expert, skillName }) {
           <h3 className={`font-bold text-base truncate group-hover:text-violet-400 transition-colors duration-300 ${isDarkMode ? "text-white" : "text-slate-900"}`}>
             {expert.name}
           </h3>
+          {expert.verifiedSkills?.some((v) => v.toLowerCase() === skillName?.toLowerCase()) && (
+            <VerificationBadge size="sm" showLabel={false} />
+          )}
           {expert.experienceLevel && (
             <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${levelColor} text-white capitalize`}>
               {expert.experienceLevel}
@@ -96,7 +99,7 @@ export default function ExpertListItem({ expert, skillName }) {
           {expert.teachSkills?.slice(0, 3).map((sk, i) => (
             <span
               key={i}
-              className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${
+              className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ${
                 sk.name.toLowerCase() === skillName?.toLowerCase()
                   ? `bg-gradient-to-r ${levelColor} text-white font-bold`
                   : isDarkMode
@@ -105,6 +108,7 @@ export default function ExpertListItem({ expert, skillName }) {
               }`}
             >
               {sk.name}
+              {expert.verifiedSkills?.some((v) => v.toLowerCase() === sk.name.toLowerCase()) && <VerificationBadge size="xs" showLabel={false} />}
             </span>
           ))}
           {expert.teachSkills?.length > 3 && (

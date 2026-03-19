@@ -43,6 +43,8 @@ import ExpertProfile from "./pages/ExpertProfile";
 import SkillHub from "./pages/SkillHub";
 import SocialIntegration from "./pages/SocialIntegration";
 import TimeBanking from "./pages/TimeBanking";
+import GroupSessions from "./pages/GroupSessions";
+import SkillVerification from "./pages/SkillVerification";
 
 export default function App() {
   return (
@@ -84,6 +86,8 @@ export default function App() {
             <Route path="skill-hub" element={<SkillHub />} />
             <Route path="skill-hub/social-integration" element={<SocialIntegration />} />
             <Route path="skill-hub/time-banking" element={<TimeBanking />} />
+            <Route path="skill-hub/group-sessions" element={<GroupSessions />} />
+            <Route path="skill-hub/skill-verification" element={<SkillVerification />} />
           </Route>
 
           {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}
