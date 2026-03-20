@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useTheme } from "../hooks/useTheme";
 import api, { BASE_URL } from "../utils/api";
 
@@ -9,7 +9,82 @@ export default function DashboardPage() {
   const [displayedUsers, setDisplayedUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [filterBy, setFilterBy] = useState("all");
+  const [sortBy, setSortBy] = useState("default");
+  
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [activeNotifTab, setActiveNotifTab] = useState('all');
+  const notifRef = useRef(null);
+  
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await api.get('/notifications');
+        setNotifications(res.data);
+        setUnreadCount(res.data.filter(n => !n.isRead).length);
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+      }
+    };
+    fetchNotifications();
+  }, []);
+
+  const notifTabs = [
+    { id: 'all', label: 'All' },
+    { id: 'match_request', label: 'Match Requests' },
+    { id: 'session', label: 'Sessions' },
+    { id: 'time_banking', label: 'Time Banking' },
+    { id: 'contract', label: 'Contracts' },
+    { id: 'chat', label: 'Chats' },
+    { id: 'review', label: 'Reviews' },
+    { id: 'group_session', label: 'Group Sessions' },
+    { id: 'gamification', label: 'Gamification' }
+  ];
+
+  const filteredNotifications = notifications.filter(n => {
+    if (activeNotifTab === 'all') return true;
+    
+    // Some backend components might use specific types
+    if (activeNotifTab === 'match_request' && n.type === 'match_request') return true;
+    if (activeNotifTab === 'chat' && (n.type === 'message' || n.type === 'chat')) return true;
+    if (activeNotifTab === 'gamification' && n.type === 'gamification') return true;
+    
+    // Fallback: match based on textual content
+    const content = ((n.title || '') + ' ' + (n.message || '') + ' ' + (n.content || '')).toLowerCase();
+    
+    if (activeNotifTab === 'match_request' && (content.includes('match') && !content.includes('group'))) return true;
+    if (activeNotifTab === 'session' && (content.includes('session') && !content.includes('group'))) return true;
+    if (activeNotifTab === 'time_banking' && (content.includes('time bank') || content.includes('wallet') || content.includes('credit'))) return true;
+    if (activeNotifTab === 'contract' && content.includes('contract')) return true;
+    if (activeNotifTab === 'review' && (content.includes('review') || content.includes('rating'))) return true;
+    if (activeNotifTab === 'group_session' && (content.includes('group session') || content.includes('group'))) return true;
+    
+    return false;
+  });
+
+  const handleMarkAsRead = async (notifId) => {
+    try {
+      await api.put(`/notifications/${notifId}/read`);
+      setNotifications(notifications.map(n => n._id === notifId ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch(err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -54,48 +129,58 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const handleSearch = (query) => {
-    if (!query.trim()) {
-      setDisplayedUsers(allUsers);
-      return;
+  useEffect(() => {
+    let result = [...allUsers];
+
+    // Search
+    if (searchQuery.trim()) {
+      const searchLower = searchQuery.toLowerCase().trim();
+      result = result.filter((user) => {
+        if (user.name?.toLowerCase().includes(searchLower)) return true;
+        const locStr = typeof user.location === 'object' && user.location !== null 
+          ? `${user.location.city || ''} ${user.location.country || ''}` : (user.location || '');
+        if (locStr.toLowerCase().includes(searchLower)) return true;
+        if (user.bio?.toLowerCase().includes(searchLower)) return true;
+        if (
+          user.teachSkills?.some((skill) =>
+            skill.name?.toLowerCase().includes(searchLower)
+          )
+        )
+          return true;
+        if (
+          user.learnSkills?.some((skill) =>
+            skill.name?.toLowerCase().includes(searchLower)
+          )
+        )
+          return true;
+
+        return false;
+      });
     }
 
-    const filteredUsers = allUsers.filter((user) => {
-      const searchLower = query.toLowerCase().trim();
+    // Filter
+    if (filterBy === "teaching") {
+      result = result.filter(u => u.teachSkills && u.teachSkills.length > 0);
+    } else if (filterBy === "learning") {
+      result = result.filter(u => u.learnSkills && u.learnSkills.length > 0);
+    }
 
-      if (user.name?.toLowerCase().includes(searchLower)) return true;
-      const locStr = typeof user.location === 'object' && user.location !== null 
-        ? `${user.location.city || ''} ${user.location.country || ''}` : (user.location || '');
-      if (locStr.toLowerCase().includes(searchLower)) return true;
-      if (user.bio?.toLowerCase().includes(searchLower)) return true;
-      if (
-        user.teachSkills?.some((skill) =>
-          skill.name?.toLowerCase().includes(searchLower)
-        )
-      )
-        return true;
-      if (
-        user.learnSkills?.some((skill) =>
-          skill.name?.toLowerCase().includes(searchLower)
-        )
-      )
-        return true;
+    // Sort
+    if (sortBy === "nameAsc") {
+      result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else if (sortBy === "nameDesc") {
+      result.sort((a, b) => (b.name || "").localeCompare(a.name || ""));
+    }
 
-      return false;
-    });
-
-    setDisplayedUsers(filteredUsers);
-  };
+    setDisplayedUsers(result);
+  }, [allUsers, searchQuery, sortBy, filterBy]);
 
   const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    handleSearch(query);
+    setSearchQuery(e.target.value);
   };
 
   const clearSearch = () => {
     setSearchQuery("");
-    setDisplayedUsers(allUsers);
   };
 
   const handleViewDetails = (userId) => {
@@ -168,31 +253,13 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="relative z-10 p-6 lg:p-8">
-        {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <div className="relative group">
-            <div className="absolute inset-0 bg-emerald-500/5 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-hover:text-emerald-400 transition-colors duration-300">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-
-            {searchQuery && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-emerald-400 transition-colors duration-300"
-              >
+        {/* Header Options & Search Bar */}
+        <div className="max-w-7xl mx-auto mb-12 flex flex-col items-center gap-6">
+          <div className="flex flex-col lg:flex-row items-center w-full gap-4">
+            {/* Search Bar */}
+            <div className="relative group flex-1 w-full">
+              <div className="absolute inset-0 bg-emerald-500/5 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-hover:text-emerald-400 transition-colors duration-300">
                 <svg
                   className="w-5 h-5"
                   fill="none"
@@ -203,21 +270,153 @@ export default function DashboardPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-              </button>
-            )}
+              </div>
 
-            <input
-              type="text"
-              placeholder="Search for skills, people, or opportunities..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className={`w-full pl-12 ${
-                searchQuery ? "pr-12" : "pr-4"
-              } py-3 ${inputClass} backdrop-blur-sm border border-slate-600/30 rounded-2xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/50 transition-all duration-300 hover:bg-opacity-70 text-center`}
-            />
+              {searchQuery && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-emerald-400 transition-colors duration-300"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+
+              <input
+                type="text"
+                placeholder="Search for skills, people, or opportunities..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className={`w-full pl-12 ${
+                  searchQuery ? "pr-12" : "pr-4"
+                } py-3 ${inputClass} backdrop-blur-sm border border-slate-600/30 rounded-2xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400/50 transition-all duration-300 hover:bg-opacity-70 text-center`}
+              />
+            </div>
+
+            {/* Filter and Sort options on the right */}
+            <div className="flex flex-wrap items-center justify-center gap-3 w-full lg:w-auto">
+              <select
+                value={filterBy}
+                onChange={(e) => setFilterBy(e.target.value)}
+                className={`py-3 px-4 ${inputClass} backdrop-blur-sm border border-slate-600/30 rounded-xl focus:outline-none focus:border-emerald-400/50 hover:bg-opacity-70 flex-1 lg:flex-none cursor-pointer`}
+              >
+                <option value="all">All Members</option>
+                <option value="teaching">Mentors (Teaching)</option>
+                <option value="learning">Learners</option>
+              </select>
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className={`py-3 px-4 ${inputClass} backdrop-blur-sm border border-slate-600/30 rounded-xl focus:outline-none focus:border-emerald-400/50 hover:bg-opacity-70 flex-1 lg:flex-none cursor-pointer`}
+              >
+                <option value="default">Default Sort</option>
+                <option value="nameAsc">Name (A-Z)</option>
+                <option value="nameDesc">Name (Z-A)</option>
+              </select>
+
+              <Link 
+                to="/skill-hub/time-banking" 
+                className={`flex items-center justify-center w-[50px] h-[50px] rounded-xl backdrop-blur-sm border border-slate-600/30 hover:border-emerald-400/50 transition-all duration-300 group ${isDarkMode ? 'bg-slate-800/50 text-emerald-400' : 'bg-white text-emerald-600 shadow-sm'}`}
+                title="Time Banking"
+              >
+                <div className="relative transform group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+                </div>
+              </Link>
+
+              {/* Notification Icon */}
+              <div className="relative" ref={notifRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className={`relative flex items-center justify-center w-[50px] h-[50px] rounded-xl backdrop-blur-sm border border-slate-600/30 hover:border-emerald-400/50 transition-all duration-300 ${isDarkMode ? 'bg-slate-800/50 text-emerald-400' : 'bg-white text-emerald-600 shadow-sm'}`}
+                  title="Notifications"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md z-10">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className={`absolute right-0 mt-3 w-80 md:w-96 rounded-2xl shadow-2xl border backdrop-blur-xl z-50 ${isDarkMode ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-gray-200'} overflow-hidden`}>
+                    <div className={`p-4 border-b font-semibold flex items-center justify-between ${isDarkMode ? 'border-slate-800 text-white' : 'border-gray-100 text-gray-800'}`}>
+                      <span>Notifications</span>
+                    </div>
+                    
+                    {/* Notification Tabs */}
+                    <div className={`flex overflow-x-auto p-2 border-b ${isDarkMode ? 'border-slate-800' : 'border-gray-100'} scrollbar-hide`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      {notifTabs.map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveNotifTab(tab.id);
+                          }}
+                          className={`flex-shrink-0 px-3 py-1.5 mx-1 text-xs font-medium rounded-full transition-colors ${activeNotifTab === tab.id
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="max-h-[350px] overflow-y-auto">
+                      {filteredNotifications.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-slate-500 flex flex-col items-center">
+                          <svg className="w-10 h-10 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                          No notifications found.
+                        </div>
+                      ) : (
+                        filteredNotifications.map((notif) => (
+                          <div
+                            key={notif._id}
+                            className={`p-4 border-b last:border-0 transition-colors cursor-pointer ${
+                              notif.isRead 
+                                ? (isDarkMode ? 'border-slate-800 hover:bg-slate-800/50 text-slate-400' : 'border-gray-100 hover:bg-gray-50 text-gray-500')
+                                : (isDarkMode ? 'border-slate-800 bg-emerald-500/10 hover:bg-emerald-500/20 text-slate-200' : 'border-gray-100 bg-emerald-50 hover:bg-emerald-100 text-gray-800')
+                            }`}
+                            onClick={() => !notif.isRead && handleMarkAsRead(notif._id)}
+                          >
+                            <div className="font-medium text-sm mb-1">{notif?.title || notif?.type || "System Notification"}</div>
+                            <div className="text-xs opacity-80">{notif?.message || notif?.content}</div>
+                            <div className="text-[10px] mt-2 opacity-50">
+                              {new Date(notif?.createdAt).toLocaleString()}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 

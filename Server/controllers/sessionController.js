@@ -1,6 +1,7 @@
 const Session = require("../models/Session");
 const User = require("../models/User");
 const { processSessionCredits } = require("./walletController");
+const { awardXP } = require("../utils/awardXP");
 
 // Create a new session
 exports.createSession = async (req, res) => {
@@ -198,6 +199,15 @@ exports.completeSession = async (req, res) => {
       await processSessionCredits(session._id);
     } catch (creditErr) {
       console.error("Credit processing failed:", creditErr);
+    }
+
+    // ── Award Gamification XP ──
+    // Host taught → session_teach XP; Participant learned → session_complete XP
+    try {
+      await awardXP(session.hostUser, "session_teach");
+      await awardXP(session.participantUser, "session_complete");
+    } catch (xpErr) {
+      console.error("XP award failed:", xpErr);
     }
 
     // Auto-sync complete to active contract if one exists

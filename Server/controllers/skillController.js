@@ -1,5 +1,6 @@
 // /controllers/skillController.js
 const Skill = require("../models/Skill");
+const { awardXP } = require("../utils/awardXP");
 
 // Add a new skill
 exports.addSkill = async (req, res, next) => {
@@ -81,6 +82,13 @@ exports.addLearnSkill = async (req, res, next) => {
 
     req.user.learnSkills.push({ name, level });
     await req.user.save();
+
+    // ── Gamification: skill_learn XP (+30 XP) ──
+    try {
+      await awardXP(req.user._id, "skill_learn");
+    } catch (xpErr) {
+      console.error("XP award (skill_learn) failed:", xpErr);
+    }
 
     res.status(200).json({ learnSkills: req.user.learnSkills });
   } catch (err) {

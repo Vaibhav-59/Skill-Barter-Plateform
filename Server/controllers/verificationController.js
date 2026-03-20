@@ -1,6 +1,7 @@
 const Verification = require("../models/Verification");
 const User = require("../models/User");
 const { GoogleGenAI } = require("@google/genai");
+const { awardXP } = require("../utils/awardXP");
 
 // ── Helper: shuffle array (question randomization) ────────────────────────────
 function shuffleArray(arr) {
@@ -126,11 +127,17 @@ exports.submitTest = async (req, res) => {
     verification.timeTaken = Math.max(0, Number(timeTaken) || 0);
     await verification.save();
 
-    // If passed → update user's verifiedSkills
+    // If passed → update user's verifiedSkills + award XP
     if (status === "passed") {
       await User.findByIdAndUpdate(userId, {
         $addToSet: { verifiedSkills: verification.skillName },
       });
+      // ── Gamification: skill verification XP (+60 XP) ──
+      try {
+        await awardXP(userId, "skill_verify");
+      } catch (xpErr) {
+        console.error("XP award (verify) failed:", xpErr);
+      }
     }
 
     res.json({ success: true, data: verification });

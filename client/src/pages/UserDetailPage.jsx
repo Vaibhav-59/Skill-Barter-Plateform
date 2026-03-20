@@ -439,6 +439,50 @@ export default function UserDetailPage() {
           </div>
         </div>
 
+        {/* Gamification Badges Section */}
+        {user.gamificationBadges && user.gamificationBadges.length > 0 && (
+          <div className={`${isDarkMode ? 'bg-gray-950/25 border-gray-800/30' : 'bg-white/60 border-amber-100'} backdrop-blur-xl border rounded-3xl shadow-xl p-8 relative overflow-hidden transition-colors duration-300`}>
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-400/0 via-amber-400/2 to-amber-400/0 opacity-0 hover:opacity-100 transition-opacity duration-500 rounded-3xl"></div>
+            
+            <div className="relative">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/10">
+                  <span className="text-white text-2xl">🏅</span>
+                </div>
+                <h3 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                  Earned Badges ({user.gamificationBadges.length})
+                </h3>
+              </div>
+              
+              <div className="flex flex-wrap gap-4">
+                {user.gamificationBadges.map((badge, index) => (
+                  <div
+                    key={index}
+                    title={badge.description}
+                    className={`group flex items-center gap-3 px-4 py-3 backdrop-blur-sm border rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg ${
+                      isDarkMode 
+                        ? 'bg-gray-900/30 border-gray-800/25 hover:border-amber-500/30 hover:bg-gray-900/50' 
+                        : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 hover:border-amber-400 hover:bg-amber-100/50'
+                    }`}
+                  >
+                    <span className="text-3xl filter drop-shadow-md group-hover:scale-110 transition-transform">
+                      {badge.icon}
+                    </span>
+                    <div>
+                      <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                        {badge.badgeName}
+                      </p>
+                      <p className={`text-[10px] uppercase font-semibold tracking-wider ${isDarkMode ? 'text-amber-500/80' : 'text-amber-600'}`}>
+                        {badge.category}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Skills Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Teaching Skills */}

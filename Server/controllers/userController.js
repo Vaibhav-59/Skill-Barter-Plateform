@@ -2,6 +2,7 @@
 const Match = require("../models/Match");
 const path = require("path");
 const fs = require("fs");
+const Gamification = require("../models/Gamification");
 
 const User = require("../models/User");
 const ErrorResponse = require("../utils/errorResponse");
@@ -79,7 +80,7 @@ exports.updateProfile = async (req, res, next) => {
         );
         updateData.profileImage = result.secure_url;
         console.log("✅ Uploaded profile image:", result.secure_url);
-        
+
         // Delete old profile image if it exists
         const existingUser = await User.findById(req.user._id);
         if (existingUser.profileImage) {
@@ -205,7 +206,7 @@ exports.updateProfile = async (req, res, next) => {
 exports.deleteProfileImage = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
-    
+
     if (user.profileImage) {
       try {
         const oldPublicId = extractPublicId(user.profileImage);
@@ -215,11 +216,11 @@ exports.deleteProfileImage = async (req, res, next) => {
       } catch (delErr) {
         console.error("Error deleting profile image from Cloudinary:", delErr);
       }
-      
+
       user.profileImage = undefined;
       await user.save();
     }
-    
+
     res.json(user);
   } catch (err) {
     next(err);
@@ -242,10 +243,27 @@ exports.getAllUsers = async (req, res, next) => {
 // Get user by ID
 exports.getUserById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id).select("-password").lean();
     if (!user) {
       return next(new ErrorResponse("User not found", 404));
     }
+
+    // Try to fetch gamification stats to get earned badges
+    try {
+      const gStats = await Gamification.findOne({ userId: user._id }).lean();
+      if (gStats && gStats.badges) {
+        // Enforce uniqueness by badgeName for UserDetailPage payload
+        const uniqueMap = new Map();
+        gStats.badges.forEach((b) => uniqueMap.set(b.badgeName, b));
+        user.gamificationBadges = Array.from(uniqueMap.values());
+      } else {
+        user.gamificationBadges = [];
+      }
+    } catch (gErr) {
+      console.error("Could not fetch gamification badges for user profile:", gErr);
+      user.gamificationBadges = [];
+    }
+
     res.json(user);
   } catch (err) {
     next(err);

@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const sendEmail = require("./sendEmail");
+const { sendEmail } = require("./sendEmail");
 const Skill = require("../models/Skill");
 const Match = require("../models/Match");
 const Review = require("../models/Review");

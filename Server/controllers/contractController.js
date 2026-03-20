@@ -3,6 +3,7 @@ const SkillContract = require("../models/SkillContract");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { sendContractReminders } = require("../services/contractReminderService");
+const { awardXP } = require("../utils/awardXP");
 
 // ─── Create Contract ──────────────────────────────────────────────────────────
 exports.createContract = async (req, res) => {
@@ -340,6 +341,17 @@ exports.completeContractSession = async (req, res) => {
       { contractId: contract._id, contractSessionNumber: Number(sessionNumber) },
       { status: "completed" }
     );
+
+    // ── Award Gamification XP to both parties ──
+    try {
+      // The person completing the action taught → session_teach XP
+      await awardXP(userId, "session_teach");
+      // The other participant learned → session_complete XP
+      const otherParty = isA ? contract.userB._id : contract.userA._id;
+      await awardXP(otherParty, "session_complete");
+    } catch (xpErr) {
+      console.error("XP award (contract session) failed:", xpErr);
+    }
 
     // Notify other party
     const otherUserId = isA ? contract.userB._id : contract.userA._id;

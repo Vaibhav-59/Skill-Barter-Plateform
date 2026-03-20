@@ -43,6 +43,8 @@ export default function NotificationsPage() {
         return "⏰";
       case "system":
         return "⚙️";
+      case "gamification":
+        return "🎮";
       default:
         return "🔔";
     }
