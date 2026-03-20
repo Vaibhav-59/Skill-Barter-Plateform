@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+~import { useEffect, useState } from "react";
 import api from "../utils/api";
 import { showError, showSuccess } from "../utils/toast";
 
@@ -30,6 +30,16 @@ export default function NotificationsPage() {
       showSuccess("Marked as read");
     } catch {
       showError("Failed to mark as read");
+    }
+  };
+
+  const deleteNotification = async (id) => {
+    try {
+      await api.delete(`/notifications/${id}`);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      showSuccess("Notification deleted");
+    } catch {
+      showError("Failed to delete notification");
     }
   };
 
@@ -120,17 +130,29 @@ export default function NotificationsPage() {
                     </span>
                   </div>
 
-                  {!note.isRead && (
+                  <div className="flex items-center gap-4 mt-2">
+                    {!note.isRead && (
+                      <button
+                        onClick={() => markAsRead(note._id)}
+                        className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Mark as read
+                      </button>
+                    )}
                     <button
-                      onClick={() => markAsRead(note._id)}
-                      className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 transition-colors mt-2 flex items-center gap-1.5"
+                      onClick={() => deleteNotification(note._id)}
+                      className="text-sm font-semibold text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
+                      title="Remove notification"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                      Mark as read
+                      Remove
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
             ))}

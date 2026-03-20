@@ -4,6 +4,7 @@ const {
   createNotification,
   getMyNotifications,
   markAsRead,
+  deleteNotification,
 } = require("../controllers/notificationController");
 
 const router = express.Router();
@@ -11,5 +12,6 @@ const router = express.Router();
 router.post("/", protect, createNotification);
 router.get("/", protect, getMyNotifications);
 router.put("/:id/read", protect, markAsRead);
+router.delete("/:id", protect, deleteNotification);
 
 module.exports = router;

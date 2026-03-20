@@ -86,6 +86,19 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteNotification = async (notifId) => {
+    try {
+      await api.delete(`/notifications/${notifId}`);
+      const deletedNotif = notifications.find(n => n._id === notifId);
+      if (deletedNotif && !deletedNotif.isRead) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+      setNotifications(notifications.filter(n => n._id !== notifId));
+    } catch (err) {
+      console.error("Failed to delete notification:", err);
+    }
+  };
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -402,12 +415,31 @@ export default function DashboardPage() {
                                 ? (isDarkMode ? 'border-slate-800 hover:bg-slate-800/50 text-slate-400' : 'border-gray-100 hover:bg-gray-50 text-gray-500')
                                 : (isDarkMode ? 'border-slate-800 bg-emerald-500/10 hover:bg-emerald-500/20 text-slate-200' : 'border-gray-100 bg-emerald-50 hover:bg-emerald-100 text-gray-800')
                             }`}
-                            onClick={() => !notif.isRead && handleMarkAsRead(notif._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              !notif.isRead && handleMarkAsRead(notif._id);
+                            }}
                           >
-                            <div className="font-medium text-sm mb-1">{notif?.title || notif?.type || "System Notification"}</div>
-                            <div className="text-xs opacity-80">{notif?.message || notif?.content}</div>
-                            <div className="text-[10px] mt-2 opacity-50">
-                              {new Date(notif?.createdAt).toLocaleString()}
+                            <div className="flex justify-between items-start gap-2">
+                              <div className="flex-1">
+                                <div className="font-medium text-sm mb-1">{notif?.title || notif?.type || "System Notification"}</div>
+                                <div className="text-xs opacity-80">{notif?.message || notif?.content}</div>
+                                <div className="text-[10px] mt-2 opacity-50">
+                                  {new Date(notif?.createdAt).toLocaleString()}
+                                </div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNotification(notif._id);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all duration-300 group/delete"
+                                title="Delete notification"
+                              >
+                                <svg className="w-4 h-4 transform group-hover/delete:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
                             </div>
                           </div>
                         ))
