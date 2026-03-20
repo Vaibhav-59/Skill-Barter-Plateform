@@ -95,6 +95,7 @@ app.use("/api/wallet", require("./routes/walletRoutes"));
 app.use("/api/group-sessions", require("./routes/groupSessionRoutes"));
 app.use("/api/verification", require("./routes/verificationRoutes"));
 app.use("/api/gamification", require("./routes/gamificationRoutes"));
+app.use("/api/challenges", require("./routes/challengeRoutes"));
 
 // Test route
 app.get("/", (req, res) => {

@@ -46,6 +46,8 @@ import TimeBanking from "./pages/TimeBanking";
 import GroupSessions from "./pages/GroupSessions";
 import SkillVerification from "./pages/SkillVerification";
 import Gamification from "./pages/Gamification";
+import Challenges from "./pages/Challenges";
+import ChallengeDetails from "./pages/ChallengeDetails";
 
 export default function App() {
   return (
@@ -90,6 +92,8 @@ export default function App() {
             <Route path="skill-hub/group-sessions" element={<GroupSessions />} />
             <Route path="skill-hub/skill-verification" element={<SkillVerification />} />
             <Route path="skill-hub/gamification" element={<Gamification />} />
+            <Route path="skill-hub/challenges" element={<Challenges />} />
+            <Route path="skill-hub/challenges/:id" element={<ChallengeDetails />} />
           </Route>
 
           {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}
