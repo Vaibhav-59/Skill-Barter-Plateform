@@ -97,6 +97,10 @@ app.use("/api/verification", require("./routes/verificationRoutes"));
 app.use("/api/gamification", require("./routes/gamificationRoutes"));
 app.use("/api/challenges", require("./routes/challengeRoutes"));
 app.use("/api/learning-path", require("./routes/learningPathRoutes"));
+app.use("/api/resources",     require("./routes/resourceRoutes"));
+app.use("/api/community",     require("./routes/communityRoutes"));
+
+
 
 // Test route
 app.get("/", (req, res) => {

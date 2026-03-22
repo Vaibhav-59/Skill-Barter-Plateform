@@ -49,6 +49,9 @@ import Gamification from "./pages/Gamification";
 import Challenges from "./pages/Challenges";
 import ChallengeDetails from "./pages/ChallengeDetails";
 import LearningPath from "./pages/LearningPath";
+import LearningResources from "./pages/LearningResources";
+import ResourceDetails from "./pages/ResourceDetails";
+import Community from "./pages/Community";
 
 export default function App() {
   return (
@@ -96,6 +99,9 @@ export default function App() {
             <Route path="skill-hub/challenges" element={<Challenges />} />
             <Route path="skill-hub/challenges/:id" element={<ChallengeDetails />} />
             <Route path="skill-hub/learning-path" element={<LearningPath />} />
+            <Route path="resources" element={<LearningResources />} />
+            <Route path="resources/:id" element={<ResourceDetails />} />
+            <Route path="community" element={<Community />} />
           </Route>
 
           {/* Meeting Room - Full screen, outside Layout (no sidebar/footer) */}
