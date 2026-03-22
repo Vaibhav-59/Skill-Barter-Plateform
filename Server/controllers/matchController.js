@@ -75,10 +75,18 @@ exports.getSmartMatches = async (req, res, next) => {
 
     // Map the fields to what the algorithm expects
     currentUser.skillsOffered = currentUser.teachSkills || [];
-    currentUser.skillsWanted = currentUser.learnSkills || [];
+    currentUser.skillsWanted  = currentUser.learnSkills  || [];
     currentUser.experienceLevel = currentUser.experienceLevel || "intermediate";
-    currentUser.availability = currentUser.availability || "";
-    currentUser.lastActive = currentUser.lastActive || new Date();
+    currentUser.availability    = currentUser.availability   || [];
+    currentUser.lastActive      = currentUser.lastLogin      || currentUser.updatedAt || new Date();
+    // Pass all profile fields used by the new algorithm
+    currentUser.learningStyle      = currentUser.learningStyle      || "";
+    currentUser.teachingStyle      = currentUser.teachingStyle      || "";
+    currentUser.languages          = currentUser.languages          || [];
+    currentUser.yearsOfExperience  = currentUser.yearsOfExperience  || 0;
+    currentUser.verifiedSkills     = currentUser.verifiedSkills     || [];
+    currentUser.githubData         = currentUser.githubData         || {};
+    currentUser.isGithubConnected  = currentUser.isGithubConnected  || false;
 
     // Get current user's review stats
     const currentUserReviewStats = await Review.getAverageRating(userId);
@@ -155,15 +163,23 @@ exports.getSmartMatches = async (req, res, next) => {
 
     // Map fields for each potential match
     potentialMatches.forEach((user) => {
-      user.skillsOffered = user.teachSkills || [];
-      user.skillsWanted = user.learnSkills || [];
-      user.experienceLevel = user.experienceLevel || "intermediate";
-      user.availability = user.availability || "";
+      user.skillsOffered    = user.teachSkills || [];
+      user.skillsWanted     = user.learnSkills  || [];
+      user.experienceLevel  = user.experienceLevel || "intermediate";
+      user.availability     = user.availability    || [];
+      user.learningStyle    = user.learningStyle   || "";
+      user.teachingStyle    = user.teachingStyle   || "";
+      user.languages        = user.languages       || [];
+      user.yearsOfExperience= user.yearsOfExperience|| 0;
+      user.verifiedSkills   = user.verifiedSkills  || [];
+      user.githubData       = user.githubData      || {};
+      user.isGithubConnected= user.isGithubConnected|| false;
       const stats = reviewStatsMap[user._id.toString()] || { averageRating: 0, totalReviews: 0 };
       user.averageRating = stats.averageRating;
-      user.totalReviews = stats.totalReviews;
-      user.lastActive = user.lastActive || new Date();
-      user.isOnline = user.isOnline || false;
+      user.totalReviews  = stats.totalReviews;
+      user.lastLogin     = user.lastLogin  || user.updatedAt || new Date();
+      user.lastActive    = user.lastLogin;
+      user.isOnline      = user.isOnline   || false;
     });
 
     if (potentialMatches.length === 0) {
@@ -259,27 +275,36 @@ exports.getSmartMatches = async (req, res, next) => {
     const responseData = {
       matches: paginatedMatches.map((match) => ({
         user: {
-          _id: match.user._id,
-          name: match.user.name,
-          email: match.user.email,
-          avatar: match.user.avatar,
-          bio: match.user.bio || "",
-          location: match.user.location,
-          teachSkills: match.user.skillsOffered || match.user.teachSkills || [],
-          learnSkills: match.user.skillsWanted || match.user.learnSkills || [],
-          skillsOffered: match.user.skillsOffered || [],
-          skillsWanted: match.user.skillsWanted || [],
-          experienceLevel: match.user.experienceLevel || "intermediate",
-          averageRating: match.user.averageRating || 0,
-          totalReviews: match.user.totalReviews || 0,
-          isOnline: match.user.isOnline || false,
-          lastActive: match.user.lastActive,
-          availability: match.user.availability,
+          _id:              match.user._id,
+          name:             match.user.name,
+          email:            match.user.email,
+          avatar:           match.user.avatar,
+          profileImage:     match.user.profileImage || match.user.avatar || "",
+          bio:              match.user.bio || "",
+          location:         match.user.location,
+          teachSkills:      match.user.skillsOffered || match.user.teachSkills || [],
+          learnSkills:      match.user.skillsWanted  || match.user.learnSkills  || [],
+          skillsOffered:    match.user.skillsOffered || [],
+          skillsWanted:     match.user.skillsWanted  || [],
+          experienceLevel:  match.user.experienceLevel || "intermediate",
+          yearsOfExperience:match.user.yearsOfExperience || 0,
+          learningStyle:    match.user.learningStyle  || "",
+          teachingStyle:    match.user.teachingStyle  || "",
+          languages:        match.user.languages      || [],
+          verifiedSkills:   match.user.verifiedSkills || [],
+          githubData:       match.user.githubData     || {},
+          isGithubConnected:match.user.isGithubConnected || false,
+          averageRating:    match.user.averageRating  || 0,
+          totalReviews:     match.user.totalReviews   || 0,
+          isOnline:         match.user.isOnline       || false,
+          lastActive:       match.user.lastActive,
+          availability:     match.user.availability,
         },
         compatibilityScore: match.compatibilityScore,
-        matchType: match.matchType,
-        reasons: match.reasons || [],
-        confidence: match.confidence || 0,
+        matchType:          match.matchType,
+        reasons:            match.reasons    || [],
+        highlights:         match.highlights || [],
+        confidence:         match.confidence || 0,
         ...(includeInsights === "true" && { breakdown: match.breakdown }),
       })),
       pagination: {

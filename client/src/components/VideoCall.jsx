@@ -24,6 +24,8 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
   const [callState, setCallState]       = useState("idle");
   const [isMuted, setIsMuted]           = useState(false);
   const [isCameraOff, setIsCameraOff]   = useState(false);
+  const [remoteCameraOff, setRemoteCameraOff] = useState(false);
+  const [remoteMicOff, setRemoteMicOff]       = useState(false);
   const [incomingOffer, setIncomingOffer] = useState(null);
   const [callerId, setCallerId]         = useState(null);
   const [callerInfo, setCallerInfo]     = useState(null);
@@ -254,6 +256,8 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
     setCallerInfo(null);
     setIsMuted(false);
     setIsCameraOff(false);
+    setRemoteCameraOff(false);
+    setRemoteMicOff(false);
     setError("");
     setRemoteStreamReady(false);
   }, [stopTimer]);
@@ -385,7 +389,17 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
     const newEnabled = !audioTracks[0].enabled;   // derive from actual track state
     audioTracks.forEach((t) => { t.enabled = newEnabled; });
     setIsMuted(!newEnabled);                       // muted = track disabled
-  }, []);
+    
+    // Notify remote user
+    const targetUserId = callerIdRef.current || remoteUser?._id;
+    if (targetUserId) {
+      socketService.socket?.emit("toggleMedia", {
+        targetUserId,
+        type: "audio",
+        isOff: !newEnabled,
+      });
+    }
+  }, [remoteUser]);
 
   // ── toggleCamera ─────────────────────────────────────────────────────────────
   const toggleCamera = useCallback(async () => {
@@ -416,6 +430,14 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
         }
 
         setIsCameraOff(false);
+        const targetUserId = callerIdRef.current || remoteUser?._id;
+        if (targetUserId) {
+          socketService.socket?.emit("toggleMedia", {
+            targetUserId,
+            type: "video",
+            isOff: false,
+          });
+        }
         return;
       } catch (err) {
         console.error("Failed to get real video stream:", err);
@@ -425,9 +447,19 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
 
     // Standard toggle — enable/disable the existing track
     const newEnabled = !vidTrack?.enabled;
-    vidTracks.forEach((t) => { t.enabled = newEnabled; });
+    if (vidTracks) vidTracks.forEach((t) => { t.enabled = newEnabled; });
     setIsCameraOff(!newEnabled);
-  }, [isCameraOff]);
+
+    // Notify remote user
+    const targetUserId = callerIdRef.current || remoteUser?._id;
+    if (targetUserId) {
+      socketService.socket?.emit("toggleMedia", {
+        targetUserId,
+        type: "video",
+        isOff: !newEnabled,
+      });
+    }
+  }, [isCameraOff, remoteUser]);
 
   // ── Socket event listeners ───────────────────────────────────────────────────
   useEffect(() => {
@@ -514,6 +546,11 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
     socket.on("callRejected", onCallRejected);
     socket.on("callEnded",    onCallEnded);
     socket.on("iceCandidate", onIceCandidate);
+    socket.on("mediaToggled", ({ type, isOff }) => {
+      console.log(`📡 Remote user toggled ${type} to ${isOff ? 'off' : 'on'}`);
+      if (type === "video") setRemoteCameraOff(isOff);
+      if (type === "audio") setRemoteMicOff(isOff);
+    });
 
     return () => {
       socket.off("incomingCall", onIncomingCall);
@@ -521,6 +558,7 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
       socket.off("callRejected", onCallRejected);
       socket.off("callEnded",    onCallEnded);
       socket.off("iceCandidate", onIceCandidate);
+      socket.off("mediaToggled");
     };
   }, [remoteUser, cleanup, startTimer, saveCallMessage, drainIceQueue]);
 
@@ -598,12 +636,31 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
     }
   }, [attachStreamToVideo]);
 
-  const setRemoteVideoRef = useCallback((node) => {
+    const setRemoteVideoRef = useCallback((node) => {
     remoteVideoRef.current = node;
     if (node && remoteStreamRef.current) {
       attachStreamToVideo(node, remoteStreamRef.current);
     }
   }, [attachStreamToVideo]);
+
+  // ── Sync initial state when connected ─────────────────────────────
+  useEffect(() => {
+    if (callState === "connected") {
+      const targetUserId = callerIdRef.current || remoteUser?._id;
+      if (targetUserId) {
+        socketService.socket?.emit("toggleMedia", {
+          targetUserId,
+          type: "video",
+          isOff: isCameraOff,
+        });
+        socketService.socket?.emit("toggleMedia", {
+          targetUserId,
+          type: "audio",
+          isOff: isMuted,
+        });
+      }
+    }
+  }, [callState, isCameraOff, isMuted, remoteUser]);
 
   // ═══════════════════════════════════════════════
   //  RENDER
@@ -745,15 +802,38 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
           ref={setRemoteVideoRef}
           autoPlay
           playsInline
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover transition-opacity duration-300 ${remoteCameraOff ? "opacity-0" : "opacity-100"}`}
         />
+
+        {/* Remote Camera Off Placeholder */}
+        {remoteCameraOff && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center shadow-2xl mb-4">
+              <span className="text-3xl font-bold text-white">
+                {(remoteUser?.name || callerInfo?.name || "?")[0].toUpperCase()}
+              </span>
+            </div>
+            <p className="text-white text-sm font-medium bg-black/50 px-4 py-1.5 rounded-full">
+              Camera Off
+            </p>
+          </div>
+        )}
+
+        {/* Remote Mic Off Indicator */}
+        {remoteMicOff && (
+          <div className="absolute top-20 right-6 bg-red-500/80 p-2 rounded-full z-20 shadow-lg backdrop-blur-sm">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+            </svg>
+          </div>
+        )}
 
         {/* Fallback placeholder shown while stream is connecting */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <div
             id="remote-placeholder"
             className="flex flex-col items-center gap-3 transition-opacity duration-500"
-            style={{ opacity: remoteStreamRef.current ? 0 : 1 }}
+            style={{ opacity: remoteStreamRef.current && !remoteCameraOff ? 0 : (remoteCameraOff ? 0 : 1) }}
           >
             <div className="w-24 h-24 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center shadow-2xl">
               <span className="text-3xl font-bold text-white">
@@ -767,21 +847,21 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
         </div>
 
         {/* Name + timer overlay */}
-        <div className="absolute top-6 left-0 right-0 flex flex-col items-center pointer-events-none">
+        <div className="absolute top-6 left-0 right-0 flex flex-col items-center pointer-events-none z-20">
           <div className="bg-black/40 backdrop-blur-sm rounded-full px-5 py-2 flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className={`w-2 h-2 rounded-full ${remoteStreamRef.current ? "bg-emerald-400 animate-none" : "bg-yellow-400 animate-pulse"}`} />
             <h3 className="text-white text-base font-semibold">
               {remoteUser?.name || callerInfo?.name}
             </h3>
-            <span className="text-emerald-400 text-sm font-mono tracking-wider">
-              {formatDuration(callDuration)}
+            <span className={`text-sm font-mono tracking-wider ${remoteStreamRef.current ? "text-emerald-400" : "text-yellow-400"}`}>
+              {remoteStreamRef.current ? formatDuration(callDuration) : "Connecting..."}
             </span>
           </div>
         </div>
 
         {/* Local video PiP */}
         <div
-          className="absolute bottom-4 right-4 w-36 h-48 rounded-2xl overflow-hidden border-2 border-white/25 shadow-2xl bg-gray-800 cursor-pointer hover:scale-105 transition-transform duration-200"
+          className="absolute bottom-28 right-6 w-32 h-44 sm:w-36 sm:h-48 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-gray-800 cursor-pointer hover:scale-105 transition-transform duration-200 z-30"
           title="Your camera"
         >
           <video
@@ -797,15 +877,15 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
             </div>
           )}
           <div className="absolute bottom-1.5 left-0 right-0 flex justify-center">
-            <span className="text-white text-[10px] font-medium bg-black/60 px-2 py-0.5 rounded-full">
+            <span className="text-white text-[10px] font-medium bg-black/60 px-2 py-0.5 rounded-full backdrop-blur-sm">
               You
             </span>
           </div>
         </div>
       </div>
 
-      {/* Control bar */}
-      <div className="bg-gray-900/95 backdrop-blur-xl px-8 py-5 flex items-center justify-center gap-6 border-t border-white/10">
+      {/* Control bar (Floating pill like WhatsApp) */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-gray-900/70 backdrop-blur-xl px-8 py-4 flex items-center justify-center gap-8 rounded-full border border-white/10 shadow-2xl z-40">
         {/* Mute toggle */}
         <ControlBtn
           active={isMuted}
@@ -826,10 +906,10 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
 
         {/* End call */}
         <button onClick={() => endCall()} className="flex flex-col items-center gap-1.5 group">
-          <div className="w-16 h-16 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30 group-hover:scale-110 transition-all duration-200">
-            <PhoneOffIcon className="w-7 h-7 text-white" />
+          <div className="w-16 h-16 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg shadow-red-500/40 group-hover:scale-110 transition-all duration-300">
+            <PhoneOffIcon className="w-8 h-8 text-white" />
           </div>
-          <span className="text-xs text-red-400">End</span>
+          <span className="text-xs text-red-400 font-medium tracking-wide">End</span>
         </button>
 
         {/* Camera toggle */}

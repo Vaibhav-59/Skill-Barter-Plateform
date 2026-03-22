@@ -47,6 +47,7 @@ const XP_MAP = {
   skill_verify: 60,
   challenge: 30,
   daily_checkin: 15,
+  learning_step: 25,
 };
 
 async function getOrCreate(userId) {
@@ -216,4 +217,55 @@ async function awardXP(userId, activity, bonusXp = 0) {
   }
 }
 
-module.exports = { awardXP };
+/**
+ * Deduct XP from a user's gamification profile.
+ * Used when a learning step is unmarked / reversed.
+ *
+ * @param {ObjectId|string} userId
+ * @param {number} amount  — positive number; will be subtracted
+ * @param {string} reason  — human-readable label
+ */
+async function deductXP(userId, amount, reason = "step unmarked") {
+  try {
+    if (!amount || amount <= 0) return { deducted: 0, profile: null };
+
+    const profile = await getOrCreate(userId);
+    const oldLevel = profile.level || 1;
+
+    const deducted = Math.min(amount, profile.xp); // cannot go below 0
+    profile.xp = Math.max(0, profile.xp - deducted);
+
+    // Log negative entry in xpHistory
+    profile.xpHistory.push({
+      amount: -deducted,
+      reason: reason,
+    });
+
+    // Recompute level
+    profile.level = computeLevel(profile.xp);
+
+    // Notify user
+    await Notification.create({
+      recipient: userId,
+      type: "gamification",
+      content: `⚠️ -${deducted} XP deducted (${reason})`,
+    }).catch((err) => console.error("Silent deductXP Notification error:", err));
+
+    if (profile.level < oldLevel) {
+      await Notification.create({
+        recipient: userId,
+        type: "gamification",
+        content: `📉 Level dropped to Level ${profile.level} after XP deduction.`,
+      }).catch((err) => console.error("Silent level-drop Notification error:", err));
+    }
+
+    await profile.save();
+    return { deducted, profile };
+  } catch (err) {
+    console.error("deductXP error:", err.message);
+    return { deducted: 0, profile: null };
+  }
+}
+
+module.exports = { awardXP, deductXP };
+

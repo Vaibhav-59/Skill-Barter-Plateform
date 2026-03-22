@@ -16,11 +16,13 @@ const {
   createChallenge,
   getMyCreatedChallenges,
   getChallengeSubmissions,
+  getDailyChallenge,
 } = require("../controllers/challengeController");
 
 // Public / Protected routes
 router.get("/", protect, getAllChallenges);
 router.post("/", protect, createChallenge);
+router.get("/daily", protect, getDailyChallenge);  // MUST be before /:id
 router.get("/my-created", protect, getMyCreatedChallenges);
 router.get("/leaderboard", protect, getLeaderboard);
 router.get("/history", protect, getUserHistory);

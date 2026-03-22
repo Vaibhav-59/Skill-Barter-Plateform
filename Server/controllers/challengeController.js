@@ -5,6 +5,78 @@ const Gamification = require("../models/Gamification");
 const { awardXP } = require("../utils/awardXP");
 const { GoogleGenAI } = require("@google/genai");
 
+// ── Daily Challenge Rotation ─────────────────────────────────────────────────
+// Called at server start AND by cron at midnight every day.
+// Guarantees exactly ONE active daily challenge at any time.
+exports.rotateDailyChallenge = async () => {
+  try {
+    const now = new Date();
+
+    // Is there a still-valid daily challenge?
+    const existing = await Challenge.findOne({ isDaily: true, isActive: true });
+    if (existing && existing.expiresAt && existing.expiresAt > now) {
+      console.log(
+        `🌟 Daily challenge still valid until ${existing.expiresAt.toISOString()}: "${existing.title}"`
+      );
+      return; // Nothing to do
+    }
+
+    // Clear the old daily flag
+    await Challenge.updateMany({ isDaily: true }, { $set: { isDaily: false, expiresAt: null } });
+
+    // Pick a random active non-team challenge as the new daily
+    const candidates = await Challenge.find({ isActive: true, isTeamChallenge: { $ne: true } });
+    if (candidates.length === 0) {
+      console.warn("⚠️  No candidates found for daily challenge rotation.");
+      return;
+    }
+
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+
+    // Expires at next midnight UTC
+    const nextMidnight = new Date();
+    nextMidnight.setUTCHours(24, 0, 0, 0);
+
+    await Challenge.findByIdAndUpdate(pick._id, {
+      $set: { isDaily: true, expiresAt: nextMidnight },
+    });
+
+    console.log(
+      `🔄 Daily challenge rotated → "${pick.title}" (expires ${nextMidnight.toISOString()})`
+    );
+  } catch (err) {
+    console.error("Daily challenge rotation error:", err.message);
+  }
+};
+
+// ── GET /api/challenges/daily ────────────────────────────────────────────────
+exports.getDailyChallenge = async (req, res) => {
+  try {
+    const now = new Date();
+
+    // Auto-rotate if needed (so first request of the day always works)
+    let daily = await Challenge.findOne({ isDaily: true, isActive: true, expiresAt: { $gt: now } });
+
+    if (!daily) {
+      // Trigger rotation on-demand and fetch the new one
+      await exports.rotateDailyChallenge();
+      daily = await Challenge.findOne({ isDaily: true, isActive: true });
+    }
+
+    if (!daily) {
+      return res.status(404).json({ success: false, message: "No daily challenge available." });
+    }
+
+    res.json({
+      success: true,
+      data: daily,
+      expiresAt: daily.expiresAt,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // ── GET /api/challenges ─────────────────────────────────────────────────────
 exports.getAllChallenges = async (req, res) => {
   try {

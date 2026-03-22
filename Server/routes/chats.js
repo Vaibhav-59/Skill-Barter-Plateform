@@ -35,7 +35,7 @@ router.post(
     body("text").optional().trim(),
     body("messageType")
       .optional()
-      .isIn(["text", "image", "video", "document"])
+      .isIn(["text", "image", "video", "document", "call"])
       .withMessage("Invalid message type"),
     runValidation,
   ],

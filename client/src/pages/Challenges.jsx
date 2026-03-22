@@ -1,10 +1,9 @@
-// pages/Challenges.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Swords, Cpu, Calendar, LayoutGrid, Trophy, History,
   RefreshCw, Loader2, Sparkles, Bot, ChevronRight,
-  CheckCircle, Clock, XCircle,
+  CheckCircle, Clock, XCircle, Zap, Timer,
 } from "lucide-react";
 import { useTheme } from "../hooks/useTheme";
 import {
@@ -14,6 +13,7 @@ import {
   getUserStats,
   generateAIChallenge,
   seedChallenges,
+  getDailyChallenge,
 } from "../services/challengeApi";
 import ChallengeCard from "../components/challenges/ChallengeCard";
 import ChallengeFilters from "../components/challenges/ChallengeFilters";
@@ -48,6 +48,9 @@ export default function Challenges() {
   const [history, setHistory] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [stats, setStats] = useState(null);
+  const [dailyChallenge, setDailyChallenge] = useState(null);
+  const [dailyCountdown, setDailyCountdown] = useState("");
+  const countdownRef = useRef(null);
 
   const [filters, setFilters] = useState({ category: "All", difficulty: "All", type: "all" });
   const [loading, setLoading] = useState(true);
@@ -56,6 +59,43 @@ export default function Challenges() {
   const [aiCategory, setAiCategory] = useState("Web Development");
   const [aiDiff, setAiDiff] = useState("Medium");
   const [showAIPanel, setShowAIPanel] = useState(false);
+
+  // Fetch daily challenge and start countdown timer
+  const fetchDailyChallenge = useCallback(async () => {
+    try {
+      const res = await getDailyChallenge();
+      setDailyChallenge(res.data);
+
+      // Start live countdown
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      const expiresAt = res.expiresAt ? new Date(res.expiresAt) : null;
+      if (!expiresAt) return;
+
+      const tick = () => {
+        const diff = expiresAt.getTime() - Date.now();
+        if (diff <= 0) {
+          setDailyCountdown("Refreshing...");
+          clearInterval(countdownRef.current);
+          // Auto re-fetch when the timer hits zero
+          setTimeout(fetchDailyChallenge, 2000);
+          return;
+        }
+        const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
+        const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
+        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
+        setDailyCountdown(`${h}:${m}:${s}`);
+      };
+      tick();
+      countdownRef.current = setInterval(tick, 1000);
+    } catch {
+      // Silently fail — daily challenge unavailable
+    }
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
+  }, []);
 
   // Fetch challenges with current filters
   const fetchChallenges = useCallback(async () => {
@@ -90,7 +130,7 @@ export default function Challenges() {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchChallenges(), fetchAll()]);
+      await Promise.all([fetchChallenges(), fetchAll(), fetchDailyChallenge()]);
     };
     init();
   }, []);
@@ -303,6 +343,81 @@ export default function Challenges() {
         {/* ── Challenges Tab ── */}
         {activeTab === "challenges" && (
           <div>
+            {/* ── Daily Challenge Card ── */}
+            {dailyChallenge && (
+              <div
+                className={`relative overflow-hidden rounded-2xl border mb-6 p-5 ${ 
+                  isDarkMode
+                    ? "bg-gradient-to-br from-amber-900/20 via-orange-900/10 to-yellow-900/10 border-amber-500/25"
+                    : "bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 border-amber-300"
+                }`}
+              >
+                {/* Glow blob */}
+                <div className="absolute -top-10 -right-10 w-48 h-48 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  {/* Icon + badge */}
+                  <div className="flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-400/15 border border-amber-400/25">
+                    <Calendar className="w-7 h-7 text-amber-400" />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-bold uppercase tracking-widest text-amber-500 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                        🌟 Daily Challenge
+                      </span>
+                      <span
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                          dailyChallenge.difficulty === "Easy"
+                            ? "text-green-400 bg-green-400/10 border-green-400/25"
+                            : dailyChallenge.difficulty === "Hard"
+                            ? "text-red-400 bg-red-400/10 border-red-400/25"
+                            : "text-yellow-400 bg-yellow-400/10 border-yellow-400/25"
+                        }`}
+                      >
+                        {dailyChallenge.difficulty}
+                      </span>
+                      <span className={`text-xs ${isDarkMode ? "text-slate-500" : "text-gray-400"}`}>
+                        {dailyChallenge.skillCategory}
+                      </span>
+                    </div>
+                    <p className={`font-bold text-lg leading-snug truncate ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+                      {dailyChallenge.title}
+                    </p>
+                    <p className={`text-sm mt-0.5 line-clamp-1 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+                      {dailyChallenge.description}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                    {/* Live countdown */}
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${
+                      isDarkMode ? "bg-gray-900/60 border-amber-500/20" : "bg-white border-amber-200"
+                    }`}>
+                      <Timer className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-xs font-mono font-bold text-amber-500 tabular-nums">
+                        {dailyCountdown || "Loading..."}
+                      </span>
+                    </div>
+                    <span className={`text-xs ${isDarkMode ? "text-slate-600" : "text-gray-400"}`}>resets in</span>
+                    {/* XP reward badge */}
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/25">
+                      <Zap className="w-3.5 h-3.5 text-fuchsia-400" />
+                      <span className="text-xs font-bold text-fuchsia-400">+{dailyChallenge.rewardXP} XP</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleStartChallenge(dailyChallenge)}
+                    className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold shadow-md hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    Start Now
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <ChallengeFilters
               filters={filters}
               onChange={setFilters}
@@ -333,37 +448,20 @@ export default function Challenges() {
                 </button>
               </div>
             ) : (
-              <>
-                {/* Daily Challenge Banner */}
-                {challenges.some((c) => c.isDaily) && (
-                  <div
-                    className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border mb-5 ${
-                      isDarkMode
-                        ? "bg-amber-500/5 border-amber-500/20"
-                        : "bg-amber-50 border-amber-200"
-                    }`}
-                  >
-                    <Calendar className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                    <p className={`text-sm font-medium ${isDarkMode ? "text-amber-400" : "text-amber-700"}`}>
-                      🌟 Daily challenges refresh every 24 hours — don't miss out on bonus XP!
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {challenges.map((challenge) => (
-                    <ChallengeCard
-                      key={challenge._id}
-                      challenge={challenge}
-                      onStart={handleStartChallenge}
-                      isDarkMode={isDarkMode}
-                    />
-                  ))}
-                </div>
-              </>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {challenges.map((challenge) => (
+                  <ChallengeCard
+                    key={challenge._id}
+                    challenge={challenge}
+                    onStart={handleStartChallenge}
+                    isDarkMode={isDarkMode}
+                  />
+                ))}
+              </div>
             )}
           </div>
         )}
+
 
         {/* ── History Tab ── */}
         {activeTab === "history" && (

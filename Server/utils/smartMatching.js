@@ -1,609 +1,534 @@
 // /server/utils/smartMatching.js
+// ─────────────────────────────────────────────────────────────────────────────
+// SmartMatchingAlgorithm v2 – profile-aware multi-factor scoring
+// Uses every field the user can fill in their EditProfile page:
+//   teachSkills / learnSkills, experienceLevel, yearsOfExperience, availability,
+//   location, learningStyle, teachingStyle, languages, bio, verifiedSkills,
+//   githubData, totalReviews, averageRating, lastLogin
+// ─────────────────────────────────────────────────────────────────────────────
 
 const skillSimilarity = require("./skillSimilarity");
 
 class SmartMatchingAlgorithm {
-  /**
-   * Main function to calculate smart matches for a user
-   * @param {Object} user - Current user object
-   * @param {Array} potentialMatches - Array of potential match users
-   * @param {Array} userHistory - User's past matches and reviews
-   * @returns {Array} Sorted matches with compatibility scores
-   */
+  // ── Weights ───────────────────────────────────────────────────────────────
+  static WEIGHTS = {
+    skillMatch:          0.28, // Most critical – can they trade skills?
+    mutualExchange:      0.15, // Both teach what the other wants?
+    experienceBalance:   0.10, // Complementary levels drive learning
+    learningStyleFit:    0.08, // Learning ↔ teaching style alignment
+    availabilityOverlap: 0.08, // Scheduling compatibility
+    languageMatch:       0.07, // Communication language overlap
+    locationScore:       0.05, // Same city / country convenience
+    verifiedSkillBonus:  0.05, // Platform-verified skills add trust
+    reputationScore:     0.06, // Reviews & rating
+    activityScore:       0.04, // Recency of login / activity
+    githubScore:         0.02, // GitHub presence (developer signal)
+    bioCompleteness:     0.02, // Profile completeness signal
+  };
+
+  // ── Public API ────────────────────────────────────────────────────────────
   static calculateMatchScores(user, potentialMatches, userHistory = []) {
     const scoredMatches = potentialMatches.map((potential) => {
-      const compatibility = this.calculateCompatibility(
-        user,
-        potential,
-        userHistory
-      );
+      const compat = this.calculateCompatibility(user, potential, userHistory);
       return {
         user: potential,
-        compatibilityScore: compatibility.total,
-        breakdown: compatibility.breakdown,
-        confidence: compatibility.confidence,
-        reasons: compatibility.reasons,
-        matchType: this.determineMatchType(compatibility.breakdown),
+        compatibilityScore: compat.total,
+        breakdown: compat.breakdown,
+        confidence: compat.confidence,
+        reasons: compat.reasons,
+        matchType: this.determineMatchType(compat),
+        highlights: compat.highlights,
       };
     });
 
-    // Sort by compatibility score (highest first)
-    return scoredMatches.sort(
-      (a, b) => b.compatibilityScore - a.compatibilityScore
-    );
+    return scoredMatches.sort((a, b) => b.compatibilityScore - a.compatibilityScore);
   }
 
-  /**
-   * Core compatibility calculation with multiple factors
-   */
+  // ── Core compatibility ────────────────────────────────────────────────────
   static calculateCompatibility(user, potential, userHistory) {
-    const factors = {
-      skillMatch: this.calculateSkillMatch(user, potential),
-      experienceBalance: this.calculateExperienceBalance(user, potential),
-      availabilityOverlap: this.calculateAvailabilityOverlap(user, potential),
-      locationCompatibility: this.calculateLocationScore(user, potential),
-      personalityMatch: this.calculatePersonalityMatch(user, potential),
-      historicalSuccess: this.calculateHistoricalSuccess(
-        user,
-        potential,
-        userHistory
-      ),
-      mutualInterest: this.calculateMutualInterest(user, potential),
-      activityScore: this.calculateActivityScore(potential),
-      reputationScore: this.calculateReputationScore(potential),
-    };
+    const skillResult   = this.calculateSkillMatch(user, potential);
+    const mutualResult  = this.calculateMutualExchange(user, potential);
+    const expResult     = this.calculateExperienceBalance(user, potential);
+    const styleResult   = this.calculateLearningStyleFit(user, potential);
+    const availResult   = this.calculateAvailabilityOverlap(user, potential);
+    const langResult    = this.calculateLanguageMatch(user, potential);
+    const locResult     = this.calculateLocationScore(user, potential);
+    const verResult     = this.calculateVerifiedSkillBonus(user, potential);
+    const repResult     = this.calculateReputationScore(potential);
+    const actResult     = this.calculateActivityScore(potential);
+    const ghResult      = this.calculateGithubScore(potential);
+    const bioResult     = this.calculateBioCompleteness(potential);
+    const histResult    = this.calculateHistoricalSuccess(user, potential, userHistory);
 
-    // Weighted scoring system (total = 100%)
-    const weights = {
-      skillMatch: 0.25, // 25% - Most important
-      experienceBalance: 0.15, // 15% - Skill level compatibility
-      availabilityOverlap: 0.12, // 12% - Scheduling compatibility
-      mutualInterest: 0.12, // 12% - Both want to learn from each other
-      reputationScore: 0.1, // 10% - User rating and reviews
-      personalityMatch: 0.08, // 8% - Communication style
-      historicalSuccess: 0.08, // 8% - Past success with similar users
-      locationCompatibility: 0.06, // 6% - Geographic convenience
-      activityScore: 0.04, // 4% - How active user is
+    const factors = {
+      skillMatch:          skillResult,
+      mutualExchange:      mutualResult,
+      experienceBalance:   expResult,
+      learningStyleFit:    styleResult,
+      availabilityOverlap: availResult,
+      languageMatch:       langResult,
+      locationScore:       locResult,
+      verifiedSkillBonus:  verResult,
+      reputationScore:     repResult,
+      activityScore:       actResult,
+      githubScore:         ghResult,
+      bioCompleteness:     bioResult,
     };
 
     let totalScore = 0;
-    let confidence = 0;
+    let totalConfidence = 0;
     const breakdown = {};
     const reasons = [];
+    const highlights = [];
 
-    // Calculate weighted score
-    for (const [factor, score] of Object.entries(factors)) {
-      const weightedScore = score.value * weights[factor];
-      totalScore += weightedScore;
-      breakdown[factor] = {
-        raw: score.value,
-        weighted: weightedScore,
-        weight: weights[factor],
-        explanation: score.explanation,
-        isMutual: score.isMutual,
+    for (const [key, result] of Object.entries(factors)) {
+      const w = this.WEIGHTS[key] ?? 0;
+      const weighted = result.value * w;
+      totalScore += weighted;
+      totalConfidence += result.confidence * w;
+
+      breakdown[key] = {
+        raw: result.value,
+        weighted,
+        weight: w,
+        explanation: result.explanation,
       };
 
-      if (score.value > 0.7) {
-        reasons.push(score.explanation);
+      if (result.value >= 0.75 && result.explanation) {
+        reasons.push(result.explanation);
       }
-
-      confidence += score.confidence * weights[factor];
+      if (result.highlight) {
+        highlights.push(result.highlight);
+      }
     }
 
-    const isMutualExchange = factors.skillMatch?.isMutual || false;
-    if (isMutualExchange) {
-      const mutualBonus = 0.15;
-      totalScore = Math.min(totalScore + mutualBonus, 1);
+    // History bonus (additive, capped)
+    const histBonus = (histResult.value - 0.5) * 0.08;
+    totalScore = Math.min(1, Math.max(0, totalScore + histBonus));
+
+    // Mutual exchange synergy bonus
+    if (mutualResult.value >= 0.7 && skillResult.value >= 0.65) {
+      totalScore = Math.min(1, totalScore + 0.05);
+      reasons.unshift("Perfect two-way skill exchange opportunity!");
     }
 
     return {
-      total: Math.round(totalScore * 100), // Convert to 0-100 scale
+      total:      Math.round(totalScore * 100),
       breakdown,
-      confidence: Math.round(confidence * 100),
-      reasons: reasons.slice(0, 3), // Top 3 reasons
+      confidence: Math.round(totalConfidence * 100),
+      reasons:    reasons.slice(0, 4),
+      highlights: highlights.slice(0, 6),
     };
   }
 
-  /**
-   * Calculate skill complementarity score
-   */
+  // ── Factor 1 – Skill Match ─────────────────────────────────────────────── 
+  // Current user's teachSkills ↔ potential's learnSkills (one direction)
   static calculateSkillMatch(user, potential) {
-    const userTeaching = user.skillsOffered || [];
-    const userLearning = user.skillsWanted || [];
-    const potentialTeaching = potential.skillsOffered || [];
-    const potentialLearning = potential.skillsWanted || [];
+    const myTeach  = user.skillsOffered    || user.teachSkills    || [];
+    const theirWant= potential.skillsWanted|| potential.learnSkills|| [];
+    const theirTeach= potential.skillsOffered|| potential.teachSkills|| [];
+    const myWant   = user.skillsWanted     || user.learnSkills    || [];
 
-    const specificMatches = [];
-    
-    let userToPotentialBest = 0;
-    let userToPotentialCount = 0;
-    
-    for (const teachSkill of userTeaching) {
-      for (const learnSkill of potentialLearning) {
-        const similarity = skillSimilarity.calculateSkillSimilarity(teachSkill, learnSkill);
-        if (similarity > 0.6) {
-          userToPotentialCount++;
-          if (similarity > userToPotentialBest) {
-            userToPotentialBest = similarity;
-          }
-          if (similarity > 0.7) {
-            specificMatches.push(`You can teach ${learnSkill.name || learnSkill} they want to learn`);
-          }
-        }
-      }
-    }
+    const fwd = this._bestCrossScore(myTeach, theirWant);
+    const rev = this._bestCrossScore(theirTeach, myWant);
 
-    let potentialToUserBest = 0;
-    let potentialToUserCount = 0;
-    
-    for (const teachSkill of potentialTeaching) {
-      for (const learnSkill of userLearning) {
-        const similarity = skillSimilarity.calculateSkillSimilarity(teachSkill, learnSkill);
-        if (similarity > 0.6) {
-          potentialToUserCount++;
-          if (similarity > potentialToUserBest) {
-            potentialToUserBest = similarity;
-          }
-          if (similarity > 0.7) {
-            specificMatches.push(`They can teach ${learnSkill.name || learnSkill} you want to learn`);
-          }
-        }
-      }
-    }
+    const score = Math.max(fwd.best, rev.best, (fwd.best + rev.best) / 2 * 0.9);
+    const matchedPairs = [...fwd.matches, ...rev.matches];
 
-    const hasStrongUserToPotential = userToPotentialBest > 0.7;
-    const hasStrongPotentialToUser = potentialToUserBest > 0.7;
-    const hasStrongMutualExchange = hasStrongUserToPotential && hasStrongPotentialToUser;
-
-    let score = 0;
-    const totalUserSkills = userTeaching.length + userLearning.length;
-    const totalPotentialSkills = potentialTeaching.length + potentialLearning.length;
-    const maxSkills = Math.max(totalUserSkills, totalPotentialSkills, 1);
-
-    if (hasStrongMutualExchange) {
-      score = Math.min(1, (userToPotentialBest + potentialToUserBest) / 2 + 0.2);
-    } else if (userToPotentialCount > 0 || potentialToUserCount > 0) {
-      const meaningfulMatches = Math.max(userToPotentialCount, potentialToUserCount);
-      const baseScore = meaningfulMatches / Math.max(maxSkills, 1);
-      
-      if (userToPotentialCount > 0 && potentialToUserCount > 0) {
-        score = baseScore * 1.5;
-      } else if (userToPotentialCount > 0) {
-        score = baseScore;
-      } else {
-        score = baseScore;
-      }
-    }
-
-    score = Math.min(score, 1);
-
-    let explanation = "Limited skill overlap found";
-    if (hasStrongMutualExchange) {
-      explanation = "Perfect two-way skill exchange!";
-    } else if (hasStrongUserToPotential || hasStrongPotentialToUser) {
-      explanation = specificMatches[0] || "Good skill complementarity";
+    let explanation = "Limited skill overlap";
+    let highlight = null;
+    if (score >= 0.85) {
+      explanation = matchedPairs[0] || "Excellent skill match";
+      highlight = `🎯 ${matchedPairs[0] || "Strong skill alignment"}`;
+    } else if (score >= 0.6) {
+      explanation = matchedPairs[0] || "Good skill compatibility";
     }
 
     return {
-      value: score,
-      confidence: maxSkills > 2 ? 0.9 : 0.6,
+      value: Math.min(score, 1),
+      confidence: Math.min(myTeach.length + theirTeach.length, 6) / 6,
       explanation,
-      isMutual: hasStrongMutualExchange,
+      highlight,
     };
   }
 
-  /**
-   * Calculate experience level balance
-   */
+  // ── Factor 2 – Mutual Exchange ────────────────────────────────────────────
+  // Are BOTH directions satisfied? This is the holy grail.
+  static calculateMutualExchange(user, potential) {
+    const myTeach   = user.skillsOffered     || user.teachSkills    || [];
+    const theirWant = potential.skillsWanted  || potential.learnSkills|| [];
+    const theirTeach= potential.skillsOffered || potential.teachSkills|| [];
+    const myWant    = user.skillsWanted       || user.learnSkills    || [];
+
+    const fwd = this._bestCrossScore(myTeach, theirWant);
+    const rev = this._bestCrossScore(theirTeach, myWant);
+
+    const isMutual = fwd.best >= 0.6 && rev.best >= 0.6;
+    const score = isMutual
+      ? Math.min(1, (fwd.best + rev.best) / 2 + 0.15)
+      : Math.max(fwd.best, rev.best) * 0.5;
+
+    return {
+      value: score,
+      confidence: 0.85,
+      explanation: isMutual ? "Mutual skill exchange – you both teach what the other wants!" : "One-way skill sharing",
+      highlight: isMutual ? "🔄 Two-way skill swap!" : null,
+    };
+  }
+
+  // ── Factor 3 – Experience Balance ─────────────────────────────────────────
+  // yearsOfExperience + experienceLevel both considered
   static calculateExperienceBalance(user, potential) {
-    const experienceMap = {
-      beginner: 1,
-      intermediate: 2,
-      advanced: 3,
-      expert: 4,
-    };
+    const lvlMap = { beginner: 1, intermediate: 2, advanced: 3, expert: 4 };
 
-    const userLevel = user.experienceLevel
-      ? experienceMap[user.experienceLevel.toLowerCase()]
-      : 2;
-    const potentialLevel = potential.experienceLevel
-      ? experienceMap[potential.experienceLevel.toLowerCase()]
-      : 2;
+    const uLvl  = lvlMap[(user.experienceLevel || "").toLowerCase()] || 2;
+    const pLvl  = lvlMap[(potential.experienceLevel || "").toLowerCase()] || 2;
+    const lvlDiff = Math.abs(uLvl - pLvl);
 
-    const difference = Math.abs(userLevel - potentialLevel);
+    // yoe complements the level
+    const uYoe = Math.min(user.yearsOfExperience || 0, 15);
+    const pYoe = Math.min(potential.yearsOfExperience || 0, 15);
+    const yoeDiff = Math.abs(uYoe - pYoe);
+    const yoeScore = Math.max(0, 1 - yoeDiff / 10); // normalized
 
-    // Sweet spot is 1-2 levels difference for optimal learning
-    let score;
-    if (difference === 0) score = 0.6; // Same level - okay but not ideal
-    else if (difference === 1) score = 0.9; // One level difference - great
-    else if (difference === 2) score = 1.0; // Two levels - perfect complement
-    else score = 0.3; // Too big gap
+    let lvlScore;
+    if      (lvlDiff === 0) lvlScore = 0.65;  // same – okay
+    else if (lvlDiff === 1) lvlScore = 0.90;  // 1 apart – great
+    else if (lvlDiff === 2) lvlScore = 1.00;  // 2 apart – ideal mentor/mentee
+    else                    lvlScore = 0.30;  // too far
+
+    const score = (lvlScore * 0.7 + yoeScore * 0.3);
+    const expLabel = `${user.experienceLevel || "intermediate"} ↔ ${potential.experienceLevel || "intermediate"}`;
 
     return {
       value: score,
       confidence: 0.8,
-      explanation: `Experience levels complement well (${
-        user.experienceLevel || "intermediate"
-      } ↔ ${potential.experienceLevel || "intermediate"})`,
+      explanation: `Experience balance: ${expLabel}`,
+      highlight: lvlDiff === 2 ? `📈 Ideal mentor-learner pair (${expLabel})` : null,
     };
   }
 
-  /**
-   * Calculate availability overlap
-   */
+  // ── Factor 4 – Learning / Teaching Style Fit ──────────────────────────────
+  // User's learningStyle should match potential's teachingStyle
+  static calculateLearningStyleFit(user, potential) {
+    const STYLE_COMPAT = {
+      "Visual":              ["Project-based", "Hands-on", "Step-by-step guidance"],
+      "Auditory":            ["Lecture-based", "Discussion-based"],
+      "Reading/Writing":     ["Lecture-based", "Step-by-step guidance"],
+      "Hands-on":            ["Hands-on", "Project-based"],
+      "Interactive":         ["Discussion-based", "Project-based"],
+    };
+
+    const uLearn = user.learningStyle || "";
+    const pTeach = potential.teachingStyle || "";
+
+    if (!uLearn || !pTeach) {
+      return { value: 0.5, confidence: 0.3, explanation: "Learning style data not specified" };
+    }
+
+    const compatible = STYLE_COMPAT[uLearn] || [];
+    const isMatch = compatible.includes(pTeach);
+    const score = isMatch ? 1.0 : uLearn === pTeach ? 0.7 : 0.3;
+
+    return {
+      value: score,
+      confidence: 0.75,
+      explanation: isMatch
+        ? `Your ${uLearn} learning style fits their ${pTeach} teaching!`
+        : `Learning style: ${uLearn} vs teaching: ${pTeach}`,
+      highlight: isMatch ? `✨ Learning-teaching style match!` : null,
+    };
+  }
+
+  // ── Factor 5 – Availability Overlap ───────────────────────────────────────
   static calculateAvailabilityOverlap(user, potential) {
-    if (!user.availability || !potential.availability) {
-      return {
-        value: 0.5, // Neutral score when availability unknown
-        confidence: 0.3,
-        explanation: "Availability information not available",
-      };
+    const uSlots = this._parseAvailability(user.availability);
+    const pSlots = this._parseAvailability(potential.availability);
+
+    if (uSlots.length === 0 || pSlots.length === 0) {
+      return { value: 0.5, confidence: 0.3, explanation: "Availability not specified" };
     }
 
-    const userSlots = this.parseAvailability(user.availability);
-    const potentialSlots = this.parseAvailability(potential.availability);
-
-    const overlap = this.calculateTimeOverlap(userSlots, potentialSlots);
+    const common = uSlots.filter((s) => pSlots.includes(s));
+    const ratio  = common.length / Math.max(uSlots.length, pSlots.length);
+    const score  = Math.min(1, ratio * 1.2); // slight boost
 
     return {
-      value: overlap,
+      value: score,
       confidence: 0.7,
-      explanation:
-        overlap > 0.6
-          ? "Good scheduling compatibility"
-          : "Limited time overlap",
+      explanation: score > 0.5 ? `${common.length} overlapping time slots` : "Limited scheduling overlap",
+      highlight: score >= 0.75 ? `🗓️ Great scheduling overlap (${common.length} slots)` : null,
     };
   }
 
-  /**
-   * Calculate location compatibility
-   */
-  static calculateLocationScore(user, potential) {
-    if (!user.location || !potential.location) {
-      return {
-        value: 0.5, // Neutral score for remote/unknown
-        confidence: 0.4,
-        explanation: "Location flexibility available",
-      };
+  // ── Factor 6 – Language Match ──────────────────────────────────────────────
+  static calculateLanguageMatch(user, potential) {
+    const uLangs = (user.languages || []).map((l) => l.toLowerCase());
+    const pLangs = (potential.languages || []).map((l) => l.toLowerCase());
+
+    if (uLangs.length === 0 || pLangs.length === 0) {
+      return { value: 0.5, confidence: 0.3, explanation: "Languages not specified" };
     }
 
-    // Simple location matching - can be enhanced with actual distance calculation
-    const sameCity = user.location.city === potential.location.city;
-    const sameCountry = user.location.country === potential.location.country;
+    const common = uLangs.filter((l) => pLangs.includes(l));
+    if (common.length === 0) {
+      return { value: 0.2, confidence: 0.7, explanation: "No common language" };
+    }
 
-    let score = 0.3; // Base score for different locations
-    if (sameCountry) score = 0.6;
-    if (sameCity) score = 1.0;
+    const score = Math.min(1, common.length / Math.min(uLangs.length, pLangs.length));
+    return {
+      value: score,
+      confidence: 0.8,
+      explanation: `Shared languages: ${common.slice(0, 3).join(", ")}`,
+      highlight: common.length >= 2 ? `🌐 ${common.length} shared languages` : null,
+    };
+  }
+
+  // ── Factor 7 – Location Score ──────────────────────────────────────────────
+  static calculateLocationScore(user, potential) {
+    const uLoc = user.location || {};
+    const pLoc = potential.location || {};
+    const uCity    = (uLoc.city    || "").toLowerCase().trim();
+    const uCountry = (uLoc.country || "").toLowerCase().trim();
+    const pCity    = (pLoc.city    || "").toLowerCase().trim();
+    const pCountry = (pLoc.country || "").toLowerCase().trim();
+
+    if (!uCity && !uCountry && !pCity && !pCountry) {
+      return { value: 0.5, confidence: 0.3, explanation: "Location not specified" };
+    }
+
+    let score = 0.25;
+    let explanation = "Different locations – remote collaboration";
+    if (uCountry && pCountry && uCountry === pCountry) {
+      score = 0.65;
+      explanation = "Same country";
+    }
+    if (uCity && pCity && uCity === pCity) {
+      score = 1.0;
+      explanation = "Same city – can meet in person!";
+    }
 
     return {
       value: score,
       confidence: 0.8,
-      explanation: sameCity
-        ? "Same city - easy to meet"
-        : sameCountry
-        ? "Same country - feasible"
-        : "Remote collaboration",
+      explanation,
+      highlight: score === 1.0 ? `📍 Same city as you!` : null,
     };
   }
 
-  /**
-   * Calculate personality/communication style match
-   */
-  static calculatePersonalityMatch(user, potential) {
-    // Based on user bio, communication preferences, etc.
-    const userBio = (user.bio || "").toLowerCase();
-    const potentialBio = (potential.bio || "").toLowerCase();
+  // ── Factor 8 – Verified Skill Bonus ────────────────────────────────────────
+  static calculateVerifiedSkillBonus(user, potential) {
+    const myWant    = (user.skillsWanted    || user.learnSkills    || []).map((s) => (typeof s === "string" ? s : s.name || "").toLowerCase());
+    const theirVerified = (potential.verifiedSkills || []).map((s) => s.toLowerCase());
 
-    // Simple keyword matching for personality traits
-    const positiveKeywords = [
-      "friendly",
-      "patient",
-      "helpful",
-      "collaborative",
-      "supportive",
-    ];
-    const userTraits = positiveKeywords.filter((trait) =>
-      userBio.includes(trait)
-    ).length;
-    const potentialTraits = positiveKeywords.filter((trait) =>
-      potentialBio.includes(trait)
-    ).length;
+    if (theirVerified.length === 0) {
+      return { value: 0.4, confidence: 0.4, explanation: "No verified skills", highlight: null };
+    }
 
-    const score = Math.min(
-      (userTraits + potentialTraits) / (positiveKeywords.length * 2),
-      1
+    const matchedVerified = myWant.filter((skill) =>
+      theirVerified.some((v) => v.includes(skill) || skill.includes(v))
     );
 
-    return {
-      value: score,
-      confidence: 0.6,
-      explanation:
-        score > 0.5
-          ? "Compatible communication styles"
-          : "Standard communication approach",
-    };
-  }
-
-  /**
-   * Calculate historical success with similar users
-   */
-  static calculateHistoricalSuccess(user, potential, userHistory) {
-    if (!userHistory.length) {
-      return {
-        value: 0.5, // Neutral for new users
-        confidence: 0.3,
-        explanation: "No historical data available",
-      };
-    }
-
-    // Find matches with users similar to the potential match
-    const similarMatches = userHistory.filter((match) => {
-      return this.areSimilarUsers(match.otherUser, potential);
-    });
-
-    if (similarMatches.length === 0) {
-      return {
-        value: 0.5,
-        confidence: 0.4,
-        explanation: "No similar previous matches",
-      };
-    }
-
-    const averageRating =
-      similarMatches.reduce((sum, match) => sum + (match.rating || 3), 0) /
-      similarMatches.length;
-    const score = (averageRating - 1) / 4; // Convert 1-5 rating to 0-1 score
-
-    return {
-      value: score,
-      confidence: 0.7,
-      explanation:
-        score > 0.7
-          ? "Great success with similar users"
-          : "Mixed results with similar users",
-    };
-  }
-
-  /**
-   * Calculate mutual interest score
-   */
-  static calculateMutualInterest(user, potential) {
-    const userTeaching = user.skillsOffered || [];
-    const userLearning = user.skillsWanted || [];
-    const potentialTeaching = potential.skillsOffered || [];
-    const potentialLearning = potential.skillsWanted || [];
-
-    let mutualPairs = 0;
-    let totalChecked = 0;
-
-    // Check for mutual skill exchange potential
-    userTeaching.forEach((userSkill) => {
-      potentialLearning.forEach((potentialSkill) => {
-        totalChecked++;
-        if (
-          skillSimilarity.calculateSkillSimilarity(userSkill, potentialSkill) >
-          0.7
-        ) {
-          // Check if there's a reverse match
-          potentialTeaching.forEach((reverseSkill) => {
-            userLearning.forEach((userWantSkill) => {
-              if (
-                skillSimilarity.calculateSkillSimilarity(
-                  reverseSkill,
-                  userWantSkill
-                ) > 0.7
-              ) {
-                mutualPairs++;
-              }
-            });
-          });
-        }
-      });
-    });
-
-    const score =
-      totalChecked > 0 ? Math.min(mutualPairs / totalChecked, 1) : 0;
-
-    return {
-      value: score,
-      confidence: 0.8,
-      explanation:
-        score > 0.5
-          ? "Strong mutual learning opportunity"
-          : "One-way skill sharing potential",
-    };
-  }
-
-  /**
-   * Calculate user activity score
-   */
-  static calculateActivityScore(potential) {
-    const now = new Date();
-    const lastActive = potential.lastActive
-      ? new Date(potential.lastActive)
-      : now;
-    const daysSinceActive = (now - lastActive) / (1000 * 60 * 60 * 24);
-
-    let score = 1;
-    if (daysSinceActive > 30) score = 0.3;
-    else if (daysSinceActive > 7) score = 0.6;
-    else if (daysSinceActive > 1) score = 0.9;
+    const score = matchedVerified.length > 0
+      ? Math.min(1, 0.6 + matchedVerified.length * 0.15)
+      : theirVerified.length > 0 ? 0.55 : 0.4;
 
     return {
       value: score,
       confidence: 0.9,
-      explanation:
-        score > 0.8
-          ? "Very active user"
-          : score > 0.5
-          ? "Moderately active"
-          : "Less active recently",
+      explanation: matchedVerified.length > 0
+        ? `Has ${matchedVerified.length} verified skill(s) you want to learn`
+        : `Has ${theirVerified.length} platform-verified skills`,
+      highlight: matchedVerified.length > 0
+        ? `✅ Verified in: ${matchedVerified.slice(0, 2).join(", ")}`
+        : null,
     };
   }
 
-  /**
-   * Calculate reputation score based on reviews
-   */
+  // ── Factor 9 – Reputation Score ────────────────────────────────────────────
   static calculateReputationScore(potential) {
-    const averageRating = potential.averageRating || 0;
-    const totalReviews = potential.totalReviews || 0;
+    const rating = potential.averageRating || 0;
+    const reviews = potential.totalReviews || 0;
 
-    if (totalReviews === 0) {
-      return {
-        value: 0.5, // Neutral for new users
-        confidence: 0.3,
-        explanation: "New user - no reviews yet",
-      };
+    if (reviews === 0) {
+      return { value: 0.5, confidence: 0.3, explanation: "No reviews yet – new user" };
     }
 
-    // Convert 1-5 rating to 0-1 score, with confidence based on review count
-    const score = (averageRating - 1) / 4;
-    const confidence = Math.min(totalReviews / 10, 1); // Full confidence at 10+ reviews
+    const ratingScore = (rating - 1) / 4;                        // 1-5 → 0-1
+    const confidenceScore = Math.min(reviews / 10, 1);           // saturates at 10 reviews
+    const score = ratingScore * 0.8 + confidenceScore * 0.2;
+
+    return {
+      value: Math.max(0, Math.min(1, score)),
+      confidence: confidenceScore,
+      explanation: rating >= 4.5
+        ? `Top-rated user (${rating}⭐ from ${reviews} reviews)`
+        : rating >= 4
+        ? `Highly rated (${rating}⭐)`
+        : `${rating}⭐ · ${reviews} reviews`,
+      highlight: rating >= 4.5 && reviews >= 5
+        ? `⭐ Top-rated: ${rating}/5 (${reviews} reviews)`
+        : null,
+    };
+  }
+
+  // ── Factor 10 – Activity Score ──────────────────────────────────────────────
+  static calculateActivityScore(potential) {
+    const lastLogin = potential.lastLogin || potential.lastActive || potential.updatedAt;
+    if (!lastLogin) return { value: 0.5, confidence: 0.3, explanation: "Activity unknown" };
+
+    const daysSince = (Date.now() - new Date(lastLogin)) / 86_400_000;
+
+    let score, explanation;
+    if (daysSince <= 1)  { score = 1.0;  explanation = "Active today"; }
+    else if (daysSince <= 7)  { score = 0.85; explanation = "Active this week"; }
+    else if (daysSince <= 30) { score = 0.60; explanation = "Active this month"; }
+    else if (daysSince <= 90) { score = 0.35; explanation = "Less active recently"; }
+    else                      { score = 0.15; explanation = "Inactive for a while"; }
 
     return {
       value: score,
-      confidence,
-      explanation:
-        averageRating >= 4
-          ? "Excellent reputation"
-          : averageRating >= 3
-          ? "Good reputation"
-          : "Building reputation",
+      confidence: 0.9,
+      explanation,
+      highlight: score >= 0.85 ? "🟢 Recently active" : null,
     };
   }
 
-  /**
-   * Determine match type based on compatibility breakdown
-   */
-  static determineMatchType(breakdown) {
-    const skillScore = breakdown.skillMatch?.raw || 0;
-    const mutualScore = breakdown.mutualInterest?.raw || 0;
-    const experienceScore = breakdown.experienceBalance?.raw || 0;
-    const isMutual = breakdown.skillMatch?.isMutual || false;
-
-    if (isMutual || (skillScore > 0.8 && mutualScore > 0.7)) {
-      return "perfect_match";
-    } else if (skillScore > 0.6 && experienceScore > 0.8) {
-      return "skill_complement";
-    } else if (mutualScore > 0.6) {
-      return "mutual_learning";
-    } else {
-      return "potential_match";
+  // ── Factor 11 – GitHub Score ────────────────────────────────────────────────
+  static calculateGithubScore(potential) {
+    if (!potential.isGithubConnected || !potential.githubData) {
+      return { value: 0.3, confidence: 0.5, explanation: "GitHub not connected" };
     }
+    const { reposCount = 0, stars = 0 } = potential.githubData || {};
+    const repoScore  = Math.min(reposCount / 20, 1);   // saturates at 20 repos
+    const starScore  = Math.min(stars / 100, 1);        // saturates at 100 stars
+    const score = repoScore * 0.6 + starScore * 0.4;
+
+    return {
+      value: Math.max(0.3, score),
+      confidence: 0.7,
+      explanation: `GitHub: ${reposCount} repos, ${stars} stars`,
+      highlight: stars > 50 ? `💻 ${stars}★ on GitHub` : null,
+    };
   }
 
-  /**
-   * Helper function to parse availability
-   */
-  static parseAvailability(availability) {
-    // Simple implementation - can be enhanced
-    if (typeof availability === "string") {
-      return availability.split(",").map((slot) => slot.trim());
+  // ── Factor 12 – Bio Completeness ────────────────────────────────────────────
+  static calculateBioCompleteness(potential) {
+    let score = 0;
+    const checks = [
+      potential.bio && potential.bio.length > 30,
+      (potential.teachSkills || potential.skillsOffered || []).length > 0,
+      (potential.learnSkills || potential.skillsWanted  || []).length > 0,
+      potential.location?.city || potential.location?.country,
+      potential.languages?.length > 0,
+      potential.learningStyle || potential.teachingStyle,
+      potential.profileImage,
+    ];
+
+    score = checks.filter(Boolean).length / checks.length;
+    return {
+      value: score,
+      confidence: 0.95,
+      explanation: score >= 0.8 ? "Well-completed profile" : score >= 0.5 ? "Decent profile" : "Minimal profile data",
+      highlight: score >= 0.8 ? "📋 Highly detailed profile" : null,
+    };
+  }
+
+  // ── Historical Success ──────────────────────────────────────────────────────
+  static calculateHistoricalSuccess(user, potential, userHistory) {
+    if (!userHistory || userHistory.length === 0) {
+      return { value: 0.5, confidence: 0.2 };
     }
-    return availability || [];
-  }
-
-  /**
-   * Helper function to calculate time overlap
-   */
-  static calculateTimeOverlap(slots1, slots2) {
-    const commonSlots = slots1.filter((slot) => slots2.includes(slot));
-    return commonSlots.length / Math.max(slots1.length, slots2.length, 1);
-  }
-
-  /**
-   * Helper function to check if users are similar
-   */
-  static areSimilarUsers(user1, user2) {
-    // Simple similarity check - can be enhanced
-    const skillOverlap = this.calculateSkillOverlap(
-      user1.skillsOffered || [],
-      user2.skillsOffered || []
+    const similar = userHistory.filter((h) =>
+      this._areSimilarUsers(h.matchedUser || h.otherUser, potential)
     );
-    const experienceSimilar =
-      Math.abs((user1.experienceLevel || 2) - (user2.experienceLevel || 2)) <=
-      1;
+    if (similar.length === 0) return { value: 0.5, confidence: 0.3 };
 
-    return skillOverlap > 0.3 || experienceSimilar;
+    const avgRating =
+      similar.reduce((s, h) => s + (h.rating || h.matchRating || 3), 0) / similar.length;
+    return {
+      value: Math.min(1, (avgRating - 1) / 4),
+      confidence: Math.min(similar.length / 5, 1),
+    };
   }
 
-  /**
-   * Helper function to calculate skill overlap
-   */
-  static calculateSkillOverlap(skills1, skills2) {
-    if (!skills1.length || !skills2.length) return 0;
+  // ── Match Type ──────────────────────────────────────────────────────────────
+  static determineMatchType(compat) {
+    const b = compat.breakdown || {};
+    const skill   = b.skillMatch?.raw        || 0;
+    const mutual  = b.mutualExchange?.raw     || 0;
+    const style   = b.learningStyleFit?.raw  || 0;
+    const rep     = b.reputationScore?.raw    || 0;
+    const verified= b.verifiedSkillBonus?.raw || 0;
 
-    let overlap = 0;
-    skills1.forEach((skill1) => {
-      skills2.forEach((skill2) => {
-        overlap += skillSimilarity.calculateSkillSimilarity(skill1, skill2);
-      });
-    });
-
-    return overlap / (skills1.length * skills2.length);
+    if (mutual >= 0.75 && skill >= 0.65)                          return "perfect_match";
+    if (skill >= 0.7 && style >= 0.75)                            return "style_aligned";
+    if (skill >= 0.65 && verified >= 0.65)                        return "verified_expert";
+    if (mutual >= 0.6)                                            return "mutual_learning";
+    if (skill >= 0.6 && rep >= 0.7)                               return "trusted_mentor";
+    if (compat.total >= 60)                                       return "skill_complement";
+    return "potential_match";
   }
 
-  /**
-   * Get match insights for debugging/analytics
-   */
+  // ── Insights ────────────────────────────────────────────────────────────────
   static getMatchInsights(user, matches) {
-    const insights = {
-      totalMatches: matches.length,
-      averageCompatibility: 0,
-      topFactors: {},
-      matchTypes: {},
-      recommendations: [],
-    };
-
     if (matches.length === 0) {
-      insights.recommendations.push(
-        "Add more skills to your profile to find better matches"
-      );
-      return insights;
+      return { totalMatches: 0, averageCompatibility: 0, recommendations: ["Complete your profile to improve matches"] };
     }
+    const avgCompat = Math.round(matches.reduce((s, m) => s + m.compatibilityScore, 0) / matches.length);
+    const matchTypes = {};
+    matches.forEach((m) => { matchTypes[m.matchType] = (matchTypes[m.matchType] || 0) + 1; });
 
-    // Calculate average compatibility
-    insights.averageCompatibility = Math.round(
-      matches.reduce((sum, match) => sum + match.compatibilityScore, 0) /
-        matches.length
-    );
+    const recommendations = [];
+    if (avgCompat < 50) recommendations.push("Add more skills to your profile");
+    if (!user.learningStyle) recommendations.push("Set your learning style for better style-aligned matches");
+    if (!user.languages?.length) recommendations.push("Add your languages to find compatible collaborators");
 
-    // Analyze top factors across all matches
-    const factorSums = {};
-    matches.forEach((match) => {
-      Object.entries(match.breakdown).forEach(([factor, data]) => {
-        if (!factorSums[factor]) factorSums[factor] = 0;
-        factorSums[factor] += data.weighted;
-      });
-    });
+    return { totalMatches: matches.length, averageCompatibility: avgCompat, matchTypes, recommendations };
+  }
 
-    insights.topFactors = Object.entries(factorSums)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([factor, sum]) => ({
-        factor,
-        contribution: Math.round((sum / matches.length) * 100),
-      }));
-
-    // Analyze match types
-    matches.forEach((match) => {
-      insights.matchTypes[match.matchType] =
-        (insights.matchTypes[match.matchType] || 0) + 1;
-    });
-
-    // Generate recommendations
-    if (insights.averageCompatibility < 50) {
-      insights.recommendations.push(
-        "Consider updating your skill preferences for better matches"
-      );
+  // ── Private helpers ─────────────────────────────────────────────────────────
+  static _bestCrossScore(teachSkills, learnSkills) {
+    let best = 0;
+    const matches = [];
+    for (const t of teachSkills) {
+      for (const l of learnSkills) {
+        const sim = skillSimilarity.calculateSkillSimilarity(t, l);
+        if (sim > best) best = sim;
+        if (sim >= 0.7) {
+          const tName = typeof t === "string" ? t : (t.name || "");
+          const lName = typeof l === "string" ? l : (l.name || "");
+          matches.push(`${tName} ↔ ${lName}`);
+        }
+      }
     }
-    if (factorSums.skillMatch < factorSums.reputationScore) {
-      insights.recommendations.push(
-        "Add more specific skills to improve skill-based matching"
-      );
-    }
+    return { best: Math.min(best, 1), matches: matches.slice(0, 3) };
+  }
 
-    return insights;
+  static _parseAvailability(availability) {
+    if (!availability) return [];
+    if (Array.isArray(availability)) return availability.map((s) => s.trim().toLowerCase());
+    if (typeof availability === "string") return availability.split(",").map((s) => s.trim().toLowerCase());
+    return [];
+  }
+
+  static _areSimilarUsers(u1, u2) {
+    if (!u1 || !u2) return false;
+    const s1 = (u1.skillsOffered || u1.teachSkills || []);
+    const s2 = (u2.skillsOffered || u2.teachSkills || []);
+    const overlap = this._calculateSkillOverlap(s1, s2);
+    return overlap > 0.3;
+  }
+
+  static _calculateSkillOverlap(skills1, skills2) {
+    if (!skills1.length || !skills2.length) return 0;
+    let total = 0;
+    for (const s1 of skills1) {
+      for (const s2 of skills2) {
+        total += skillSimilarity.calculateSkillSimilarity(s1, s2);
+      }
+    }
+    return total / (skills1.length * skills2.length);
   }
 }
 

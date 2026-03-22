@@ -596,64 +596,68 @@ export default function MatchesPage() {
 
         {activeTab === "smart" && (
           <div>
-            {/* Enhanced Smart Matches Header */}
-            <div className={`${cardClass} backdrop-blur-xl rounded-2xl border border-emerald-500/20 p-8 mb-8 shadow-xl relative overflow-hidden ${!isDarkMode ? 'bg-gradient-to-r from-emerald-50/50 to-teal-50/50' : ''}`}>
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/3 via-green-500/2 to-teal-500/3 rounded-2xl"></div>
+            {/* ── Smart Matches Header ── */}
+            <div className={`${cardClass} backdrop-blur-xl rounded-2xl border border-emerald-500/20 p-6 mb-6 shadow-xl relative overflow-hidden ${!isDarkMode ? 'bg-gradient-to-r from-emerald-50/50 to-teal-50/50' : ''}`}>
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/3 via-green-500/2 to-teal-500/3 rounded-2xl pointer-events-none" />
 
               <div className="relative z-10">
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <Brain className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-white flex items-center space-x-2">
-                      <span className="bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 bg-clip-text text-transparent">
-                        Smart Matches
-                      </span>
-                      <Sparkles className="w-5 h-5 text-yellow-400" />
-                    </h3>
-                    <p className="text-slate-300 mt-1">
-                      Our intelligent algorithm analyzes your skills,
-                      preferences, and learning goals
-                    </p>
+                {/* Title row */}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-emerald-400 to-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                      <Brain className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold flex items-center gap-2">
+                        <span className="bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 bg-clip-text text-transparent">
+                        Smart Matching
+                        </span>
+                        <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
+                      </h3>
+                      <p className={`text-sm mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                        12 factors · Profile-aware · Updated from your skills, style & location
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                  <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-xl p-4 border border-emerald-500/20">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Zap className="w-4 h-4 text-emerald-400" />
-                      <span className="text-emerald-400 font-semibold">
-                        Compatibility Score
-                      </span>
+                {/* Factor pills */}
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {[
+                    { label: "Skill Match", color: "bg-emerald-500/15 border-emerald-500/25 text-emerald-300", icon: "🎯" },
+                    { label: "Mutual Exchange", color: "bg-teal-500/15 border-teal-500/25 text-teal-300", icon: "🔄" },
+                    { label: "Learning Style", color: "bg-purple-500/15 border-purple-500/25 text-purple-300", icon: "🎨" },
+                    { label: "Experience", color: "bg-blue-500/15 border-blue-500/25 text-blue-300", icon: "📈" },
+                    { label: "Languages", color: "bg-indigo-500/15 border-indigo-500/25 text-indigo-300", icon: "🌐" },
+                    { label: "Availability", color: "bg-amber-500/15 border-amber-500/25 text-amber-300", icon: "🗓️" },
+                    { label: "Verified Skills", color: "bg-green-500/15 border-green-500/25 text-green-300", icon: "✅" },
+                    { label: "Reputation", color: "bg-yellow-500/15 border-yellow-500/25 text-yellow-300", icon: "⭐" },
+                    { label: "Location", color: "bg-rose-500/15 border-rose-500/25 text-rose-300", icon: "📍" },
+                    { label: "GitHub", color: "bg-slate-500/15 border-slate-500/30 text-slate-300", icon: "💻" },
+                    { label: "Activity", color: "bg-cyan-500/15 border-cyan-500/25 text-cyan-300", icon: "🟢" },
+                    { label: "Profile", color: "bg-pink-500/15 border-pink-500/25 text-pink-300", icon: "📋" },
+                  ].map((f) => (
+                    <span key={f.label} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-medium ${f.color}`}>
+                      <span>{f.icon}</span> {f.label}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Match type legend */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                  {[
+                    { icon: "✨", label: "Perfect Match",   color: "from-emerald-500 to-teal-500" },
+                    { icon: "🎨", label: "Style Aligned",   color: "from-purple-500 to-violet-500" },
+                    { icon: "✅", label: "Verified Expert", color: "from-blue-500 to-cyan-500" },
+                    { icon: "🤝", label: "Mutual Learning", color: "from-amber-500 to-orange-500" },
+                    { icon: "⭐", label: "Trusted Mentor",  color: "from-yellow-500 to-amber-500" },
+                    { icon: "🎯", label: "Skill Complement",color: "from-rose-500 to-pink-500" },
+                  ].map((t) => (
+                    <div key={t.label} className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-gradient-to-r ${t.color} bg-opacity-10`} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <span className="text-xs">{t.icon}</span>
+                      <span className="text-[10px] font-medium text-slate-300">{t.label}</span>
                     </div>
-                    <p className="text-slate-300 text-sm">
-                      Advanced matching algorithms calculate perfect
-                      partnerships
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 rounded-xl p-4 border border-blue-500/20">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Target className="w-4 h-4 text-blue-400" />
-                      <span className="text-blue-400 font-semibold">
-                        Skill Alignment
-                      </span>
-                    </div>
-                    <p className="text-slate-300 text-sm">
-                      Match with users who complement your learning goals
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Users className="w-4 h-4 text-purple-400" />
-                      <span className="text-purple-400 font-semibold">
-                        Mutual Learning
-                      </span>
-                    </div>
-                    <p className="text-slate-300 text-sm">
-                      Find partners for reciprocal skill exchange
-                    </p>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>

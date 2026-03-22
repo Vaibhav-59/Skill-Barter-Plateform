@@ -33,6 +33,9 @@ export const seedChallenges = () =>
 export const createChallenge = (data) =>
   API.post(BASE, data).then((r) => r.data);
 
+export const getDailyChallenge = () =>
+  API.get(`${BASE}/daily`).then((r) => r.data);
+
 export const getMyCreatedChallenges = () =>
   API.get(`${BASE}/my-created`).then((r) => r.data);
 

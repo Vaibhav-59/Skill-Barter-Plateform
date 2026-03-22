@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const Session = require("../models/Session");
 const { sendSessionReminder } = require("../services/reminderService");
 const { sendContractReminders } = require("../services/contractReminderService");
+const { rotateDailyChallenge } = require("../controllers/challengeController");
 
 const startCronJobs = (app) => {
   // Run every minute
@@ -66,6 +67,18 @@ const startCronJobs = (app) => {
       console.error("Contract Reminder Cron Error:", err);
     }
   });
+
+  // ── Daily Challenge Rotation: runs every day at midnight UTC ──
+  cron.schedule("0 0 * * *", async () => {
+    console.log("🔄 [Cron] Rotating daily challenge...");
+    await rotateDailyChallenge();
+  });
+
+  // Also rotate on startup so the daily challenge is always valid
+  setTimeout(() => {
+    console.log("🔄 [Startup] Ensuring daily challenge is set...");
+    rotateDailyChallenge();
+  }, 3000);
 };
 
 module.exports = startCronJobs;

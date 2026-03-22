@@ -56,4 +56,14 @@ module.exports = (io, socket, onlineUsers) => {
       from: userId,
     });
   });
+
+  // ── toggleMedia ───────────────────────────────────────────────────────────
+  // Relay media toggle state (camera or mic) to the other peer: {targetUserId, type, isOff}
+  socket.on("toggleMedia", ({ targetUserId, type, isOff }) => {
+    io.to(`user_${targetUserId}`).emit("mediaToggled", {
+      from: userId,
+      type,
+      isOff,
+    });
+  });
 };

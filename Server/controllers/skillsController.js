@@ -1,6 +1,7 @@
 // controllers/skillsController.js
 const User = require("../models/User");
 const Review = require("../models/Review");
+const Gamification = require("../models/Gamification");
 
 // Helper to build a distinct skill list with expert counts
 // from all users' teachSkills arrays
@@ -212,6 +213,20 @@ exports.getExpertProfile = async (req, res, next) => {
     // Get rating statistics
     const ratingData = await Review.getAverageRating(id);
 
+    // Fetch gamification badges
+    let gamificationBadges = [];
+    try {
+      const gStats = await Gamification.findOne({ userId: id }).lean();
+      if (gStats && gStats.badges) {
+        // Enforce uniqueness by badgeName
+        const uniqueMap = new Map();
+        gStats.badges.forEach((b) => uniqueMap.set(b.badgeName, b));
+        gamificationBadges = Array.from(uniqueMap.values());
+      }
+    } catch (gErr) {
+      console.error("Could not fetch gamification badges for expert profile:", gErr);
+    }
+
     res.json({
       success: true,
       data: {
@@ -219,6 +234,7 @@ exports.getExpertProfile = async (req, res, next) => {
         rating: parseFloat((ratingData.averageRating || 0).toFixed(1)),
         reviewCount: ratingData.totalReviews || 0,
         reviews,
+        gamificationBadges,
       },
     });
   } catch (err) {

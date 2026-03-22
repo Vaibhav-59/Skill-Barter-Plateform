@@ -244,6 +244,33 @@ export default function ExpertProfile() {
               </div>
             )}
 
+            {/* Expertise Info */}
+            <div className={`rounded-2xl border p-6 ${isDarkMode ? "bg-gray-900/50 backdrop-blur-xl border-gray-800/60" : "bg-white/80 backdrop-blur-xl border-gray-200 shadow-md"}`}>
+              <h3 className={`font-bold text-lg mb-4 ${isDarkMode ? "text-white" : "text-slate-900"}`}>Expertise Details</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className={`text-[10px] uppercase font-bold mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Teaching Style</p>
+                  <p className="text-sm text-emerald-500 font-semibold">{expert.teachingStyle || 'Not set'}</p>
+                </div>
+                <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className={`text-[10px] uppercase font-bold mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Learning Style</p>
+                  <p className="text-sm text-teal-500 font-semibold">{expert.learningStyle || 'Not set'}</p>
+                </div>
+                <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className={`text-[10px] uppercase font-bold mb-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Experience</p>
+                  <p className="text-sm text-blue-500 font-semibold">{expert.yearsOfExperience || 0} Years</p>
+                </div>
+                <div className={`p-4 rounded-xl border overflow-hidden ${isDarkMode ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className={`text-[10px] uppercase font-bold mb-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Languages</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {expert.languages?.length > 0 ? expert.languages.slice(0, 3).map(l => (
+                      <span key={l} className={`text-[10px] px-2 py-1 rounded-md font-medium ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'}`}>{l}</span>
+                    )) : <span className="text-sm text-slate-500">None</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Top Teaching Skills preview */}
             {expert.teachSkills && expert.teachSkills.length > 0 && (
               <div className={`rounded-2xl border p-6 ${isDarkMode ? "bg-gray-900/50 backdrop-blur-xl border-gray-800/60" : "bg-white/80 backdrop-blur-xl border-gray-200 shadow-md"}`}>
@@ -270,6 +297,43 @@ export default function ExpertProfile() {
                     >
                       {sk.name}
                     </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Earned Badges Section */}
+            {expert.gamificationBadges && expert.gamificationBadges.length > 0 && (
+              <div className={`rounded-2xl border p-6 ${isDarkMode ? "bg-gray-900/50 backdrop-blur-xl border-gray-800/60" : "bg-white/80 backdrop-blur-xl border-gray-200 shadow-md"}`}>
+                <div className="flex items-center gap-2 mb-4">
+                   <span className="text-xl">🏅</span>
+                   <h3 className={`font-bold text-lg ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+                    Earned Badges ({expert.gamificationBadges.length})
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {expert.gamificationBadges.map((badge, index) => (
+                    <div
+                      key={index}
+                      title={badge.description}
+                      className={`group flex items-center gap-3 px-4 py-2.5 backdrop-blur-sm border rounded-xl transition-all duration-300 hover:scale-105 ${
+                        isDarkMode 
+                          ? 'bg-gray-900/30 border-gray-800/25 hover:border-amber-500/30 hover:bg-gray-900/50' 
+                          : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 hover:border-amber-400'
+                      }`}
+                    >
+                      <span className="text-2xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                        {badge.icon}
+                      </span>
+                      <div>
+                        <p className={`text-[11px] font-bold leading-none ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                          {badge.badgeName}
+                        </p>
+                        <p className={`text-[9px] uppercase font-semibold tracking-wider mt-0.5 ${isDarkMode ? 'text-amber-500/80' : 'text-amber-600'}`}>
+                          {badge.category}
+                        </p>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

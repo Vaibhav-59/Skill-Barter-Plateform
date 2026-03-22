@@ -67,7 +67,7 @@ export default function ChatPage() {
             if (matchError.response?.status === 403) {
               setError(
                 matchError.response.data.message ||
-                  "Please wait for match approval before messaging!"
+                "Please wait for match approval before messaging!"
               );
             } else {
               setError("Failed to load conversation");
@@ -144,10 +144,10 @@ export default function ChatPage() {
         prev.map((conv) =>
           conv._id?.toString() === msgConvId
             ? {
-                ...conv,
-                lastMessage: message,
-                lastMessageAt: message.createdAt || new Date(),
-              }
+              ...conv,
+              lastMessage: message,
+              lastMessageAt: message.createdAt || new Date(),
+            }
             : conv
         )
       );
@@ -414,7 +414,7 @@ export default function ChatPage() {
       if (isPdf && !finalName.toLowerCase().endsWith('.pdf')) {
         finalName += '.pdf';
       }
-      
+
       const response = await fetch(url);
       if (!response.ok) throw new Error("Fetch failed");
       const blob = await response.blob();
@@ -537,15 +537,13 @@ export default function ChatPage() {
               </h3>
               <div className="flex items-center gap-3">
                 <div
-                  className={`relative w-3 h-3 rounded-full ${
-                    isConnected ? "bg-emerald-400" : "bg-red-400"
-                  } animate-pulse shadow-md`}
+                  className={`relative w-3 h-3 rounded-full ${isConnected ? "bg-emerald-400" : "bg-red-400"
+                    } animate-pulse shadow-md`}
                   title={isConnected ? "Connected" : "Disconnected"}
                 >
                   <div
-                    className={`absolute inset-0 w-3 h-3 rounded-full ${
-                      isConnected ? "bg-emerald-400" : "bg-red-400"
-                    } animate-ping opacity-15`}
+                    className={`absolute inset-0 w-3 h-3 rounded-full ${isConnected ? "bg-emerald-400" : "bg-red-400"
+                      } animate-ping opacity-15`}
                   ></div>
                 </div>
                 <span className="text-xs text-slate-500 font-medium">
@@ -606,11 +604,10 @@ export default function ChatPage() {
                         setSelectedConversation(conversation);
                         setError("");
                       }}
-                      className={`group p-4 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-102 relative overflow-hidden ${
-                        isSelected
+                      className={`group p-4 rounded-2xl cursor-pointer transition-all duration-300 transform hover:scale-102 relative overflow-hidden ${isSelected
                           ? "bg-gradient-to-r from-emerald-400/15 via-green-500/10 to-teal-600/15 border border-emerald-400/25 shadow-lg shadow-emerald-500/15"
                           : "bg-gray-900/25 backdrop-blur-sm border border-gray-800/25 hover:bg-gray-900/40 hover:border-gray-700/30 shadow-md"
-                      }`}
+                        }`}
                     >
                       {isSelected && (
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/8 via-green-500/4 to-teal-600/8 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -619,16 +616,15 @@ export default function ChatPage() {
                       <div className="relative flex items-center gap-4">
                         <div className="relative">
                           <div
-                            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold overflow-hidden ${
-                              isSelected
+                            className={`w-12 h-12 rounded-2xl flex items-center justify-center text-sm font-bold overflow-hidden ${isSelected
                                 ? "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 text-white shadow-emerald-500/20"
                                 : "bg-gradient-to-r from-gray-700 via-gray-600 to-gray-700 text-white"
-                            }`}
+                              }`}
                           >
                             {otherParticipant?.profileImage ? (
-                              <img 
-                                src={otherParticipant.profileImage} 
-                                alt={otherParticipant.name} 
+                              <img
+                                src={otherParticipant.profileImage}
+                                alt={otherParticipant.name}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
@@ -642,19 +638,17 @@ export default function ChatPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
                             <p
-                              className={`font-semibold truncate ${
-                                isSelected ? "text-white" : "text-white"
-                              }`}
+                              className={`font-semibold truncate ${isSelected ? "text-white" : "text-white"
+                                }`}
                             >
                               {otherParticipant?.name || "Unknown User"}
                             </p>
                             {conversation.lastMessageAt && (
                               <span
-                                className={`text-xs ${
-                                  isSelected
+                                className={`text-xs ${isSelected
                                     ? "text-emerald-200"
                                     : "text-slate-500"
-                                }`}
+                                  }`}
                               >
                                 {formatTime(conversation.lastMessageAt)}
                               </span>
@@ -662,19 +656,18 @@ export default function ChatPage() {
                           </div>
                           {conversation.lastMessage && (
                             <p
-                              className={`text-sm truncate leading-relaxed pb-1 ${
-                                isSelected
+                              className={`text-sm truncate leading-relaxed pb-1 ${isSelected
                                   ? "text-emerald-100"
                                   : "text-slate-500"
-                              }`}
+                                }`}
                             >
                               {conversation.lastMessage.messageType === "image"
                                 ? "📷 Image"
                                 : conversation.lastMessage.messageType === "video"
-                                ? "🎬 Video"
-                                : conversation.lastMessage.messageType === "document"
-                                ? "📄 Document"
-                                : conversation.lastMessage.text}
+                                  ? "🎬 Video"
+                                  : conversation.lastMessage.messageType === "document"
+                                    ? "📄 Document"
+                                    : conversation.lastMessage.text}
                             </p>
                           )}
                         </div>
@@ -700,18 +693,18 @@ export default function ChatPage() {
                         {selectedConversation.participants
                           .find((p) => p._id !== userId)
                           ?.profileImage ? (
-                          <img 
+                          <img
                             src={selectedConversation.participants
                               .find((p) => p._id !== userId)
-                              ?.profileImage} 
-                            alt="Profile" 
+                              ?.profileImage}
+                            alt="Profile"
                             className="w-full h-full object-cover"
                           />
                         ) : (
                           selectedConversation.participants
-                          .find((p) => p._id !== userId)
-                          ?.name?.charAt(0)
-                          ?.toUpperCase() || "U"
+                            .find((p) => p._id !== userId)
+                            ?.name?.charAt(0)
+                            ?.toUpperCase() || "U"
                         )}
                       </div>
                       <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-gray-950 animate-pulse shadow-md shadow-emerald-400/40"></div>
@@ -724,9 +717,8 @@ export default function ChatPage() {
                       </h3>
                       <div className="flex items-center gap-2">
                         <div
-                          className={`w-2 h-2 rounded-full ${
-                            isConnected ? "bg-emerald-400" : "bg-red-400"
-                          } animate-pulse`}
+                          className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400" : "bg-red-400"
+                            } animate-pulse`}
                         ></div>
                         <p className="text-sm text-slate-500">
                           {isConnected ? "Active now" : "Offline"}
@@ -740,7 +732,11 @@ export default function ChatPage() {
                     currentUser={JSON.parse(localStorage.getItem("user") || "{}")}
                     remoteUser={selectedConversation.participants.find((p) => p._id !== userId)}
                     conversationId={selectedConversation._id}
-                    onCallMessage={(msg) => setMessages((prev) => [...prev, msg])}
+                    onCallMessage={(msg) => setMessages((prev) => {
+                      const exists = prev.some((m) => m._id?.toString() === msg._id?.toString());
+                      if (exists) return prev;
+                      return [...prev, msg];
+                    })}
                     onClose={() => setShowVideoCall(false)}
                   />
                 </div>
@@ -754,7 +750,7 @@ export default function ChatPage() {
                     const showDate =
                       index === 0 ||
                       formatDate(messages[index - 1].createdAt) !==
-                        formatDate(message.createdAt);
+                      formatDate(message.createdAt);
 
                     return (
                       <div key={message._id}>
@@ -788,98 +784,120 @@ export default function ChatPage() {
 
                         {/* ── Regular message bubble (text / image / video / document) ── */}
                         {message.messageType !== "call" && (
-                        <div
-                          className={`flex ${
-                            isOwnMessage ? "justify-end" : "justify-start"
-                          }`}
-                        >
                           <div
-                            className={`group flex items-end gap-3 max-w-[75%] ${
-                              isOwnMessage ? "flex-row-reverse" : "flex-row"
-                            }`}
+                            className={`flex ${isOwnMessage ? "justify-end" : "justify-start"
+                              }`}
                           >
-                            {!isOwnMessage && (
-                              <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg overflow-hidden">
-                                {message.sender?.profileImage ? (
-                                  <img 
-                                    src={message.sender.profileImage} 
-                                    alt="Profile" 
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  message.sender?.name
-                                  ?.charAt(0)
-                                  ?.toUpperCase() || "U"
-                                )}
-                              </div>
-                            )}
-
                             <div
-                              className={`relative px-5 py-3 rounded-2xl shadow-md ${
-                                isOwnMessage
-                                  ? "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 text-white shadow-emerald-500/15"
-                                  : "bg-gray-900/50 backdrop-blur-sm border border-gray-800/30 text-white shadow-gray-900/15"
-                              } ${message.isTemporary ? "opacity-70" : ""}`}
+                              className={`group flex items-end gap-3 max-w-[75%] ${isOwnMessage ? "flex-row-reverse" : "flex-row"
+                                }`}
                             >
-                              {isOwnMessage && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/8 to-white/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                              )}
-
-                              {/* Image Message */}
-                              {message.messageType === "image" && message.media && (
-                                <div className="mb-2">
-                                  <img
-                                    src={message.media}
-                                    alt="Shared image"
-                                    className="max-w-[250px] max-h-[300px] rounded-lg border border-white/10 cursor-pointer object-cover hover:opacity-90 transition-opacity"
-                                    onClick={() => window.open(message.media, '_blank')}
-                                    title="Click to view full image"
-                                    loading="lazy"
-                                    crossOrigin="anonymous"
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src = "";
-                                      e.target.alt = "Failed to load image";
-                                      e.target.className = "hidden";
-                                      e.target.parentElement.innerHTML = '<div class="flex items-center gap-2 p-3 bg-gray-800/50 rounded-lg border border-white/10"><span class="text-sm text-slate-400">⚠️ Image failed to load</span></div>';
-                                    }}
-                                  />
+                              {!isOwnMessage && (
+                                <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg overflow-hidden">
+                                  {message.sender?.profileImage ? (
+                                    <img
+                                      src={message.sender.profileImage}
+                                      alt="Profile"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    message.sender?.name
+                                      ?.charAt(0)
+                                      ?.toUpperCase() || "U"
+                                  )}
                                 </div>
                               )}
 
-                              {/* Video Message */}
-                              {message.messageType === "video" && message.media && (
-                                <div className="mb-2">
-                                  <video
-                                    src={message.media}
-                                    controls
-                                    preload="metadata"
-                                    crossOrigin="anonymous"
-                                    className="max-w-[250px] max-h-[300px] rounded-lg border border-white/10"
-                                    onError={(e) => {
-                                      e.target.style.display = "none";
-                                      e.target.parentElement.innerHTML = '<div class="flex items-center gap-2 p-3 bg-gray-800/50 rounded-lg border border-white/10"><span class="text-sm text-slate-400">⚠️ Video failed to load</span></div>';
-                                    }}
-                                  />
-                                </div>
-                              )}
+                              <div
+                                className={`relative px-5 py-3 rounded-2xl shadow-md ${isOwnMessage
+                                    ? "bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 text-white shadow-emerald-500/15"
+                                    : "bg-gray-900/50 backdrop-blur-sm border border-gray-800/30 text-white shadow-gray-900/15"
+                                  } ${message.isTemporary ? "opacity-70" : ""}`}
+                              >
+                                {isOwnMessage && (
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/8 to-white/0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                )}
 
-                              {/* Document Message */}
-                              {message.messageType === "document" && message.media && (() => {
-                                const isPdf = message.mimeType === "application/pdf"
-                                  || message.fileName?.toLowerCase().endsWith(".pdf");
-                                const ext = message.fileName?.split(".").pop()?.toUpperCase() || "FILE";
-
-                                return (
+                                {/* Image Message */}
+                                {message.messageType === "image" && message.media && (
                                   <div className="mb-2">
-                                    <div
-                                      onClick={() => handleDocumentDownload(message.media, message.fileName, isPdf)}
-                                      role="button"
-                                      className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-white/10 hover:bg-gray-700/50 transition-colors cursor-pointer"
-                                    >
-                                      <div className={`w-10 h-10 ${isPdf ? "bg-red-500/20" : "bg-blue-500/20"} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                    <img
+                                      src={message.media}
+                                      alt="Shared image"
+                                      className="max-w-[250px] max-h-[300px] rounded-lg border border-white/10 cursor-pointer object-cover hover:opacity-90 transition-opacity"
+                                      onClick={() => window.open(message.media, '_blank')}
+                                      title="Click to view full image"
+                                      loading="lazy"
+                                      crossOrigin="anonymous"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = "";
+                                        e.target.alt = "Failed to load image";
+                                        e.target.className = "hidden";
+                                        e.target.parentElement.innerHTML = '<div class="flex items-center gap-2 p-3 bg-gray-800/50 rounded-lg border border-white/10"><span class="text-sm text-slate-400">⚠️ Image failed to load</span></div>';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Video Message */}
+                                {message.messageType === "video" && message.media && (
+                                  <div className="mb-2">
+                                    <video
+                                      src={message.media}
+                                      controls
+                                      preload="metadata"
+                                      crossOrigin="anonymous"
+                                      className="max-w-[250px] max-h-[300px] rounded-lg border border-white/10"
+                                      onError={(e) => {
+                                        e.target.style.display = "none";
+                                        e.target.parentElement.innerHTML = '<div class="flex items-center gap-2 p-3 bg-gray-800/50 rounded-lg border border-white/10"><span class="text-sm text-slate-400">⚠️ Video failed to load</span></div>';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Document Message */}
+                                {message.messageType === "document" && message.media && (() => {
+                                  const isPdf = message.mimeType === "application/pdf"
+                                    || message.fileName?.toLowerCase().endsWith(".pdf");
+                                  const ext = message.fileName?.split(".").pop()?.toUpperCase() || "FILE";
+
+                                  return (
+                                    <div className="mb-2">
+                                      <div
+                                        onClick={() => handleDocumentDownload(message.media, message.fileName, isPdf)}
+                                        role="button"
+                                        className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-white/10 hover:bg-gray-700/50 transition-colors cursor-pointer"
+                                      >
+                                        <div className={`w-10 h-10 ${isPdf ? "bg-red-500/20" : "bg-blue-500/20"} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                          <svg
+                                            className={`w-5 h-5 ${isPdf ? "text-red-400" : "text-blue-400"}`}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                            />
+                                          </svg>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium truncate">
+                                            {message.fileName || "Document"}
+                                          </p>
+                                          <p className="text-xs text-slate-400">
+                                            {message.fileSize
+                                              ? `${(message.fileSize / (1024 * 1024)).toFixed(2)} MB · `
+                                              : ""}
+                                            {ext} · Click to open
+                                          </p>
+                                        </div>
                                         <svg
-                                          className={`w-5 h-5 ${isPdf ? "text-red-400" : "text-blue-400"}`}
+                                          className="w-4 h-4 text-slate-400 flex-shrink-0"
                                           fill="none"
                                           stroke="currentColor"
                                           viewBox="0 0 24 24"
@@ -888,77 +906,51 @@ export default function ChatPage() {
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
                                             strokeWidth={2}
-                                            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                                           />
                                         </svg>
                                       </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">
-                                          {message.fileName || "Document"}
-                                        </p>
-                                        <p className="text-xs text-slate-400">
-                                          {message.fileSize
-                                            ? `${(message.fileSize / (1024 * 1024)).toFixed(2)} MB · `
-                                            : ""}
-                                          {ext} · Click to open
-                                        </p>
-                                      </div>
-                                      <svg
-                                        className="w-4 h-4 text-slate-400 flex-shrink-0"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <path
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                          strokeWidth={2}
-                                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                        />
-                                      </svg>
                                     </div>
-                                  </div>
-                                );
-                              })()}
+                                  );
+                                })()}
 
-                              {/* Text Content — only show for text messages, not for files */}
-                              {message.messageType === "text" && message.text && (
-                                <p className="text-sm leading-relaxed relative pb-1">
-                                  {message.text}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-end gap-2 mt-2">
-                                <p
-                                  className={`text-xs ${
-                                    isOwnMessage
-                                      ? "text-emerald-100"
-                                      : "text-slate-500"
-                                  }`}
-                                >
-                                  {formatTime(message.createdAt)}
-                                </p>
-                                {message.isTemporary && (
-                                  <div className="w-3 h-3 border border-current rounded-full animate-spin opacity-60"></div>
+                                {/* Text Content — only show for text messages, not for files */}
+                                {message.messageType === "text" && message.text && (
+                                  <p className="text-sm leading-relaxed relative pb-1">
+                                    {message.text}
+                                  </p>
                                 )}
-                                {isOwnMessage && !message.isTemporary && (
-                                  <svg
-                                    className="w-4 h-4 text-emerald-100"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
+                                <div className="flex items-center justify-end gap-2 mt-2">
+                                  <p
+                                    className={`text-xs ${isOwnMessage
+                                        ? "text-emerald-100"
+                                        : "text-slate-500"
+                                      }`}
                                   >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
-                                )}
+                                    {formatTime(message.createdAt)}
+                                  </p>
+                                  {message.isTemporary && (
+                                    <div className="w-3 h-3 border border-current rounded-full animate-spin opacity-60"></div>
+                                  )}
+                                  {isOwnMessage && !message.isTemporary && (
+                                    <svg
+                                      className="w-4 h-4 text-emerald-100"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                      />
+                                    </svg>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
                         )}
                       </div>
                     );
