@@ -10,6 +10,8 @@ const sendNotification = async (io, userId, notification) => {
   } catch (_) {}
 };
 
+const escapeRegex = (text) => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
 // ─── CREATE ─────────────────────────────────────────────────────────────────
 exports.createGroupSession = async (req, res) => {
   try {
@@ -52,7 +54,7 @@ exports.getAllGroupSessions = async (req, res) => {
     const { status, skill, page = 1, limit = 20 } = req.query;
     const filter = {};
     if (status) filter.status = status;
-    if (skill) filter.skill = new RegExp(skill, "i");
+    if (skill) filter.skill = new RegExp(escapeRegex(skill), "i");
 
     const sessions = await GroupSession.find(filter)
       .populate("hostUserId", "name avatar profileImage")

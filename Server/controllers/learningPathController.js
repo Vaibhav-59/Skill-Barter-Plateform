@@ -21,6 +21,11 @@ function todayStr() {
   return new Date().toISOString().split("T")[0];
 }
 
+// ── Helper: escape RegExp ─────────────────────────────────────────────────────
+function escapeRegex(text) {
+  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
+
 // ── 1. Generate Learning Path ─────────────────────────────────────────────────
 exports.generatePath = async (req, res) => {
   try {
@@ -337,7 +342,7 @@ exports.getSkillExchange = async (req, res) => {
     const skillList = skills.split(",").map((s) => s.trim()).filter(Boolean);
 
     const experts = await User.find({
-      "skillsOffered.name": { $in: skillList.map((s) => new RegExp(s, "i")) },
+      "skillsOffered.name": { $in: skillList.map((s) => new RegExp(escapeRegex(s), "i")) },
       _id: { $ne: req.user.id },
     })
       .select("name profileImage skillsOffered rating")

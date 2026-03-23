@@ -10,6 +10,8 @@ const POPULATE_ANS   = { path: "answers.user",    select: "name avatar profileIm
 const populatePost = (query) =>
   query.populate(POPULATE_USER).populate(POPULATE_CMNT).populate(POPULATE_REPLY).populate(POPULATE_ANS);
 
+const escapeRegex = (text) => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+
 /* ─────────────────────────────────────────────────────────────────
    CREATE POST   POST /api/community
 ───────────────────────────────────────────────────────────────────*/
@@ -45,7 +47,7 @@ exports.getPosts = async (req, res) => {
 
     const filter = {};
     if (postType && postType !== "all") filter.postType = postType;
-    if (tag)    filter.tags = { $in: [new RegExp(tag, "i")] };
+    if (tag)    filter.tags = { $in: [new RegExp(escapeRegex(tag), "i")] };
     if (search) filter.$text = { $search: search };
     if (saved === "true") filter.saves = req.user._id;
 
@@ -298,13 +300,16 @@ exports.getTrendingTags = async (req, res) => {
 exports.getRecommended = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("teachSkills learnSkills").lean();
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     const skills = [
       ...(user.learnSkills || []).map(s => typeof s === "string" ? s : s.name || ""),
       ...(user.teachSkills || []).map(s => typeof s === "string" ? s : s.name || ""),
     ].filter(Boolean);
 
     const posts = skills.length > 0
-      ? await populatePost(Post.find({ tags: { $in: skills.map(s => new RegExp(s, "i")) } }).sort({ createdAt: -1 }).limit(10))
+      ? await populatePost(Post.find({ tags: { $in: skills.map(s => new RegExp(escapeRegex(s), "i")) } }).sort({ createdAt: -1 }).limit(10))
       : await populatePost(Post.find({}).sort({ createdAt: -1 }).limit(10));
 
     res.json({ success: true, data: posts });

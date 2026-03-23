@@ -244,18 +244,23 @@ exports.getTrending = async (req, res) => {
 exports.getRecommended = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("teachSkills learnSkills experienceLevel").lean();
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
     const skills = [
       ...(user.learnSkills  || []).map(s => typeof s === "string" ? s : s.name || ""),
       ...(user.teachSkills  || []).map(s => typeof s === "string" ? s : s.name || ""),
     ].filter(Boolean);
+
+    const escapeRegex = (text) => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
 
     let resources = [];
     if (skills.length > 0) {
       resources = await Resource.find({
         isApproved: true,
         $or: [
-          { tags: { $in: skills.map(s => new RegExp(s, "i")) } },
-          { title: { $in: skills.map(s => new RegExp(s, "i")) } },
+          { tags: { $in: skills.map(s => new RegExp(escapeRegex(s), "i")) } },
+          { title: { $in: skills.map(s => new RegExp(escapeRegex(s), "i")) } },
         ],
         difficultyLevel: user.experienceLevel === "beginner" ? "Beginner"
           : user.experienceLevel === "advanced" ? "Advanced" : { $in: ["Beginner", "Intermediate"] },

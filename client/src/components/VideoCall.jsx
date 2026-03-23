@@ -77,10 +77,17 @@ export default function VideoCall({ currentUser, remoteUser, conversationId, onC
     if (!videoEl || !stream) return;
     if (videoEl.srcObject === stream) return;          // already attached
     videoEl.srcObject = stream;
-    videoEl.play().catch((e) => {
-      // Autoplay restrictions — usually fine with muted or after user gesture
-      console.warn("video.play() blocked:", e.name);
-    });
+    
+    const playPromise = videoEl.play();
+    if (playPromise !== undefined) {
+      playPromise.catch((e) => {
+        // AbortError is common in React when the component unmounts quickly or rerenders 
+        // before play() completes.
+        if (e.name !== 'AbortError') {
+          console.warn("video.play() blocked:", e.name);
+        }
+      });
+    }
   }, []);
 
   // ── getLocalStream ──────────────────────────────────────────────────────────
